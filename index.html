@@ -888,8 +888,18 @@ async function validar() {
   if ((classeN.includes("capex") || classeN.includes("investimento") || classeN.includes("maquinas e equipamento") || classeN.includes("obras civis") || classeN.includes("sistemas aplicativos") || classeN.includes("imoveis") || classeN.includes("moveis e utensilios")) && !ccN.includes("capex")) {
     avisos.push("Classe de CAPEX geralmente requer CC específico de CAPEX.");
   }
-  if ((classeN.includes("adm") || classeN.includes("administrativo")) && (ccN.includes("marketing") || ccN.includes("linha pet") || ccN.includes("linha produc"))) {
-    erros.push("Classe ADM não deve ser usada com CC de Marketing ou linhas comerciais.");
+  // Regra ADM: classe administrativa só pode usar CC administrativo
+  const isClasseAdm = classeN.includes("adm") || classeN.includes("administrativo");
+  const CC_ADM_VALIDOS = ["recursos humanos","rh","financeiro","diretoria","presidencia","juridico","ti ","tecnologia da informacao","tecnologia informacao","administrativo geral","administrativo","contabilidade","controladoria","compras","logistica","qualidade","regulatorio","producao","operacoes"];
+  const CC_NAO_ADM = ["gestao comercial","comercial","marketing","linha pet","linha producao","linha agricola","linha ingredientes","equinos","bovinos","suinos","aves","pet","nuxcell","avesyn","biomol","bioagrega"];
+  if (isClasseAdm) {
+    const ccEhNaoAdm = CC_NAO_ADM.some(kw => ccN.includes(norm(kw)));
+    const ccEhAdm = CC_ADM_VALIDOS.some(kw => ccN.includes(norm(kw)));
+    if (ccEhNaoAdm) {
+      erros.push(`Classe ADM não pode usar CC "${cc}". Lançamentos administrativos devem estar atrelados a CCs administrativos (ex: Recursos Humanos, Financeiro, TI, Diretoria).`);
+    } else if (!ccEhAdm) {
+      avisos.push(`CC "${cc}" não é reconhecido como centro de custo administrativo. Verifique se está correto para uma classe ADM.`);
+    }
   }
 
   const div = document.getElementById("res-validar");
