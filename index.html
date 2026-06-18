@@ -573,7 +573,17 @@ async function testarConexao() {
 const FORNECEDORES_LOCAL = {
   "SERVMED": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "ASSISTENCIA MEDICA (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Medicina do trabalho / exames ocupacionais" },
   "WELLHUB": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "ASSISTENCIA MEDICA (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Benefício ginástica laboral" },
-  "SOLIDES": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "SISTEMAS DE INFORMACOES (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Sistema de RH" },
+  "SOLIDES": { variants: [
+    { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "SISTEMAS DE INFORMACOES (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4,
+      disambig_keys: ["mensalidade","assinatura","licenca","licença","plataforma","sistema","mensal"],
+      desc_ex: ["Mensalidade plataforma Sólides", "Assinatura mensal sistema RH Sólides", "Licença plataforma jan/26"] },
+    { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "PRODUTIVIDADE, GRATIFICACOES (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4,
+      disambig_keys: ["bonus","bônus","bonificacao","bonificação","gratificacao","gratificação","premiacao","premiação","incentivo"],
+      desc_ex: ["Bônus performance colaboradores", "Gratificação equipe comercial", "Premiação resultados trimestrais"] },
+    { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "SERVICOS PESSOA JURIDICA (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4,
+      disambig_keys: ["servico","serviço","implantacao","implantação","consultoria","configuracao","configuração","suporte","treinamento","implementacao"],
+      desc_ex: ["Serviço de implantação Sólides", "Consultoria configuração plataforma", "Suporte técnico PJ Sólides"] }
+  ]},
   "SENIOR SISTEMAS": { cc: "TI", ccCod: "ADM", classe: "SISTEMAS DE INFORMACOES (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "ERP Senior" },
   "RSTA": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "SERVICOS DE ADVOCACIA (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Assessoria jurídica" },
   "EDUARDO JABUR": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "SERVICOS DE ADVOCACIA (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Advogado" },
