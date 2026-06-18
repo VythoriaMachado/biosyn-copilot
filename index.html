@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioSyn - Classificador Financeiro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--verde:#1a7a4a;--verde-claro:#e8f5ee;--verde-hover:#155f3a;--borda:#ddd;--sombra:0 2px 8px rgba(0,0,0,0.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#222}
+header{background:var(--verde);color:white;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:1.15rem;font-weight:600}
+header span{font-size:.8rem;opacity:.75;display:block;margin-top:2px}
+#sb-status{font-size:.75rem;padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.15)}
+.tabs{display:flex;background:white;border-bottom:2px solid var(--borda);padding:0 24px;overflow-x:auto}
+.tab{padding:13px 20px;cursor:pointer;font-weight:500;color:#666;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .2s}
+.tab.active{color:var(--verde);border-bottom-color:var(--verde)}
+.tab:hover:not(.active){color:var(--verde);background:var(--verde-claro)}
+.content{padding:20px;max-width:920px;margin:0 auto}
+.card{background:white;border-radius:8px;padding:22px;box-shadow:var(--sombra);margin-bottom:18px}
+.card h2{font-size:.95rem;color:var(--verde);margin-bottom:14px;border-bottom:1px solid var(--borda);padding-bottom:9px}
+label{display:block;font-size:.82rem;font-weight:600;color:#444;margin-bottom:5px;margin-top:13px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--borda);border-radius:6px;font-size:.88rem;font-family:inherit;transition:border .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde)}
+textarea{resize:vertical;min-height:56px}
+.btn{background:var(--verde);color:white;border:none;padding:10px 26px;border-radius:6px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:14px;transition:background .2s}
+.btn:hover{background:var(--verde-hover)}
+.btn-sec{background:white;color:var(--verde);border:1.5px solid var(--verde);margin-left:8px}
+.btn-sec:hover{background:var(--verde-claro)}
+.btn-sm{padding:5px 14px;font-size:.8rem;margin-top:0}
+.btn-danger{background:#c62828}
+.result{margin-top:18px;display:none}
+.result.show{display:block}
+.result-box{border-radius:8px;padding:16px 18px}
+.result-box.alto{background:#e8f5ee;border-left:4px solid #1a7a4a}
+.result-box.medio{background:#fff8e1;border-left:4px solid #f5a623}
+.result-box.baixo{background:#fdecea;border-left:4px solid #e53935}
+.result-box.ok{background:#e8f5ee;border-left:4px solid #1a7a4a}
+.result-box.erro{background:#fdecea;border-left:4px solid #e53935}
+.conf-badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:.73rem;font-weight:700;margin-left:7px}
+.conf-alto{background:#1a7a4a;color:white}
+.conf-medio{background:#f5a623;color:white}
+.conf-baixo{background:#e53935;color:white}
+.dim{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0}
+.dim-item{background:white;border:1px solid var(--borda);border-radius:6px;padding:9px 11px}
+.dim-item .lbl{font-size:.68rem;text-transform:uppercase;color:#888;font-weight:700}
+.dim-item .val{font-size:.87rem;font-weight:600;color:var(--verde);margin-top:3px}
+.obs{font-size:.83rem;color:#555;margin-top:8px;line-height:1.5}
+.warn{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:9px 13px;font-size:.83rem;margin-top:9px}
+.err-list{list-style:none;margin-top:8px}
+.err-list li{padding:5px 0;font-size:.85rem;color:#c62828;border-bottom:1px solid #fce4e4}
+.err-list li:last-child{border-bottom:none}
+.err-list li::before{content:"x ";font-weight:bold}
+.hint{font-size:.76rem;margin-top:4px}
+hr{border:none;border-top:1px solid var(--borda);margin:14px 0}
+.page{display:none}
+.page.active{display:block}
+.tbl-wrap{overflow-x:auto;margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--verde);color:white;padding:8px 10px;text-align:left;font-weight:600}
+td{padding:7px 10px;border-bottom:1px solid var(--borda)}
+tr:hover td{background:var(--verde-claro)}
+.badge-ativo{background:#e8f5ee;color:#1a7a4a;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700}
+.badge-inativo{background:#fdecea;color:#c62828;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:white;border-radius:10px;padding:24px;width:100%;max-width:520px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal h3{color:var(--verde);font-size:1rem;margin-bottom:14px}
+.hist-item{padding:10px 14px;border-bottom:1px solid var(--borda);font-size:.83rem}
+.hist-item:last-child{border-bottom:none}
+.hist-meta{color:#888;font-size:.75rem;margin-top:3px}
+.empty{text-align:center;color:#aaa;padding:30px;font-size:.88rem}
+.config-hint{font-size:.8rem;color:#888;background:#f9f9f9;border:1px solid var(--borda);border-radius:6px;padding:10px 14px;margin-bottom:14px}
+.config-hint code{background:#eee;padding:1px 5px;border-radius:3px;font-size:.78rem}
+@media(max-width:600px){.dim{grid-template-columns:1fr}.content{padding:10px}}
+</style>
+</head>
+<body>
+<header>
+<div><h1>BioSyn Saude Animal - Classificador Financeiro</h1><span>Senior ERP - Classes Financeiras - Centros de Custo - Projetos</span></div>
+<div id="sb-status">offline</div>
+</header>
+<div class="tabs">
+<div class="tab active" onclick="switchTab('classificar')">Classificar Despesa</div>
+<div class="tab" onclick="switchTab('validar')">Validar Lancamento</div>
+<div class="tab" onclick="switchTab('fornecedores')">Fornecedores</div>
+<div class="tab" onclick="switchTab('historico')">Historico</div>
+<div class="tab" onclick="switchTab('config')">Configurar</div>
+</div>
+<div class="content">
+<div id="pg-classificar" class="page active">
+<div class="card">
+<h2>Classificar Nova Despesa</h2>
+<label>Fornecedor / Razao Social</label>
+<input type="text" id="inp-fornecedor" placeholder="Ex: HOAM DIGITAL, SOLIDES TECNOLOGIA..." oninput="sugerirFornecedor(this.value)">
+<div id="fornec-hint" class="hint"></div>
+<label>Descricao da despesa</label>
+<textarea id="inp-descricao" placeholder="Ex: Servico de edicao de video institucional da marca BioSyn..."></textarea>
+<label>Linha de produto envolvida (opcional)</label>
+<select id="inp-linha">
+<option value="">Nao se aplica / Institucional</option>
+<option value="PET">Linha PET (NUXCELL, produtos veterinarios PET)</option>
+<option value="PRODUCAO">Linha Producao (AVESYN, BIOMOL, producao animal)</option>
+<option value="AGRICOLA">Linha Agricola (BIOAGREGA, fungos, bacterias)</option>
+<option value="INGREDIENTES">Linha Ingredientes (Microcaps, ingredientes)</option>
+</select>
+<label>Tipo de despesa (opcional)</label>
+<select id="inp-tipo">
+<option value="">Auto detectar</option>
+<option value="FEIRA">Feira / Exposicao / Evento</option>
+<option value="CAPEX">Investimento (CAPEX)</option>
+<option value="MANUT">Manutencao de equipamento/predial</option>
+<option value="TI">Tecnologia / Software / Sistema</option>
+<option value="VIAGEM">Viagem / Hospedagem / Passagem</option>
+<option value="RH">Beneficio / RH / Saude</option>
+<option value="MATERIAL">Material / Insumo / Compra</option>
+<option value="SERVICO">Servico contratado (PJ/PF)</option>
+<option value="MKT">Marketing / Publicidade / Brinde</option>
+<option value="PD">P&D / Pesquisa / Ensaio clinico</option>
+</select>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<button class="btn" onclick="classificar()">Classificar</button>
+<button class="btn btn-sec" onclick="limpar('classificar')">Limpar</button>
+</div>
+</div>
+<div class="result" id="res-classificar"><div class="result-box" id="res-box-classificar"><div id="res-conteudo-classificar"></div></div></div>
+</div>
+<div id="pg-validar" class="page">
+<div class="card">
+<h2>Validar Lancamento Existente</h2>
+<p class="obs" style="margin-bottom:10px;">Informe as tres dimensoes para verificar a Regra do Triangulo.</p>
+<label>Classe Financeira</label>
+<input type="text" id="val-classe" list="lista-classes" placeholder="Ex: SERVICOS PESSOA JURIDICA (ADM)">
+<datalist id="lista-classes"></datalist>
+<label>Centro de Custo</label>
+<input type="text" id="val-cc" list="lista-ccs" placeholder="Ex: ADMINISTRATIVO GERAL">
+<datalist id="lista-ccs"></datalist>
+<label>Projeto</label>
+<input type="text" id="val-projeto" list="lista-projetos" placeholder="Ex: CORPORATIVO MATRIZ">
+<datalist id="lista-projetos"></datalist>
+<label>Fornecedor (opcional)</label>
+<input type="text" id="val-fornecedor" placeholder="Para contexto adicional">
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<button class="btn" onclick="validar()">Validar</button>
+<button class="btn btn-sec" onclick="limpar('validar')">Limpar</button>
+</div>
+</div>
+<div class="result" id="res-validar"><div class="result-box" id="res-box-validar"><div id="res-conteudo-validar"></div></div></div>
+</div>
+<div id="pg-fornecedores" class="page">
+<div class="card">
+<h2>Base de Fornecedores</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+<input type="text" id="busca-fornec" placeholder="Buscar fornecedor..." style="max-width:260px;" oninput="filtrarFornecedores(this.value)">
+<button class="btn btn-sm" onclick="abrirModalFornecedor()">+ Novo Fornecedor</button>
+</div>
+<div class="tbl-wrap"><table id="tbl-fornecedores"><thead><tr><th>Fornecedor</th><th>CC</th><th>Classe</th><th>Projeto</th><th>Obs</th><th>Status</th><th></th></tr></thead><tbody id="tbody-fornecedores"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody></table></div>
+</div>
+</div>
+<div id="pg-historico" class="page">
+<div class="card"><h2>Historico de Classificacoes</h2><div id="hist-classificacoes"><div class="empty">Carregando...</div></div></div>
+<div class="card"><h2>Historico de Validacoes</h2><div id="hist-validacoes"><div class="empty">Carregando...</div></div></div>
+</div>
+<div id="pg-config" class="page">
+<div class="card">
+<h2>Configurar Conexao Supabase</h2>
+<div class="config-hint">Acesse <strong>supabase.com > seu projeto > Settings > API</strong> e copie a <code>URL</code> e a chave <code>anon public</code>.</div>
+<label>Supabase URL</label>
+<input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co">
+<label>Supabase Anon Key</label>
+<input type="text" id="cfg-key" placeholder="eyJhbGci...">
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<button class="btn" onclick="salvarConfig()">Salvar e Conectar</button>
+<button class="btn btn-sec" onclick="testarConexao()">Testar Conexao</button>
+</div>
+<div id="cfg-msg" class="obs" style="margin-top:10px;"></div>
+</div>
+</div>
+</div>
+<div class="modal-bg" id="modal-fornec">
+<div class="modal">
+<h3 id="modal-title">Novo Fornecedor</h3>
+<input type="hidden" id="modal-id">
+<label>Nome do Fornecedor *</label><input type="text" id="mf-nome" placeholder="Razao social ou nome">
+<label>Centro de Custo</label><input type="text" id="mf-cc" list="lista-ccs" placeholder="Ex: MARKETING">
+<label>Classe Financeira</label><input type="text" id="mf-classe" list="lista-classes" placeholder="Ex: AGENCIAS E FREELANCERS (MKT)">
+<label>Projeto</label><input type="text" id="mf-projeto" list="lista-projetos" placeholder="Ex: CORPORATIVO MATRIZ">
+<label>Observacao</label><input type="text" id="mf-obs" placeholder="Ex: Agencia de marketing digital">
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+<button class="btn btn-sm" onclick="salvarFornecedor()">Salvar</button>
+<button class="btn btn-sec btn-sm" onclick="fecharModal()">Cancelar</button>
+<button class="btn btn-danger btn-sm" id="btn-excluir" style="display:none;" onclick="excluirFornecedor()">Excluir</button>
+</div>
+</div>
+</div>
+<script>
+var sbClient=null;
+function getConfig(){return{url:localStorage.getItem("sb_url")||"",key:localStorage.getItem("sb_key")||""}}
+function initSupabase(){var c=getConfig();if(!c.url||!c.key){setStatus(false);return}try{sbClient=supabase.createClient(c.url,c.key);setStatus(true);carregarFornecedoresBD()}catch(e){setStatus(false)}}
+function setStatus(o){document.getElementById("sb-status").textContent=o?"Supabase conectado":"offline"}
+async function salvarConfig(){var url=document.getElementById("cfg-url").value.trim(),key=document.getElementById("cfg-key").value.trim();if(!url||!key){alert("Preencha URL e Key.");return}localStorage.setItem("sb_url",url);localStorage.setItem("sb_key",key);initSupabase();document.getElementById("cfg-msg").innerHTML="Configuracao salva. Testando...";await testarConexao()}
+async function testarConexao(){if(!sbClient){document.getElementById("cfg-msg").textContent="Configure a conexao primeiro.";return}try{var r=await sbClient.from("fornecedores").select("id").limit(1);var msg=document.getElementById("cfg-msg");if(r.error){msg.textContent="Erro: "+r.error.message;setStatus(false)}else{msg.innerHTML="Conexao OK! Tabelas encontradas.";setStatus(true)}}catch(e){document.getElementById("cfg-msg").textContent="Falha: "+e.message}}
+var FORNECEDORES_LOCAL={"SERVMED":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"ASSISTENCIA MEDICA (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Medicina do trabalho"},"WELLHUB":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"ASSISTENCIA MEDICA (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Beneficio ginastica laboral"},"SOLIDES":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"SISTEMAS DE INFORMACOES (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Sistema de RH"},"SENIOR SISTEMAS":{cc:"TI",ccCod:"ADM",classe:"SISTEMAS DE INFORMACOES (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"ERP Senior"},"RSTA":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"SERVICOS DE ADVOCACIA (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Assessoria juridica"},"HOAM DIGITAL":{cc:"MARKETING",ccCod:"MKT",classe:"AGENCIAS E FREELANCERS (MKT)",projeto:"EDICAO DE VIDEO",raiz:5,obs:"Producao audiovisual"},"QUIRON":{cc:"MARKETING",ccCod:"MKT",classe:"AGENCIAS E FREELANCERS (MKT)",projeto:"CORPORATIVO MATRIZ",raiz:5,obs:"Agencia de conteudo"},"RASEC FEIRAS":{cc:"Linha PET",ccCod:"PET",classe:"FEIRAS E EXPOSICOES (MKT)",projeto:"CAT CONGRESS 2026",raiz:5,obs:"Infraestrutura de feira PET"},"KALE EVENTOS":{cc:"Linha PET / Linha INGREDIENTES",ccCod:"PET",classe:"FEIRAS E EXPOSICOES (MKT)",projeto:"CBA 2026 / FENAGRA 2026",raiz:5,obs:"Infraestrutura de feiras"},"IKA EMBORRACHADOS":{cc:"MARKETING",ccCod:"MKT",classe:"BRINDES E DONATIVOS (MKT)",projeto:"BRINDES",raiz:5,obs:"Brindes/materiais promocionais"},"LIOBRAS":{cc:"Capex EQUIP. INDUSTRIAIS",ccCod:"CAPEX",classe:"MAQUINAS E EQUIPAMENTOS",projeto:"LIOFILIZADOR",raiz:3,obs:"Aquisicao de ativo CAPEX"},"ENGFARMA":{cc:"Capex EQUIP. INDUSTRIAIS",ccCod:"CAPEX",classe:"MAQUINAS E EQUIPAMENTOS",projeto:"BIN SISTEMA DE MISTURA",raiz:3,obs:"Aquisicao de ativo CAPEX"},"CASA GLASS":{cc:"Capex INFRAESTRUTURA",ccCod:"CAPEX",classe:"OBRAS CIVIS",projeto:"ADEQUACOES",raiz:3,obs:"Obra civil"},"SISTEGERADOR":{cc:"MANUTENCAO GERAL",ccCod:"MANUT",classe:"MANUTENCAO DE MAQUINAS E EQUIPAMENTOS (CUSTO)",projeto:"CORPORATIVO MATRIZ",raiz:2,obs:"Manutencao gerador"},"ROMACO":{cc:"MANUTENCAO GERAL",ccCod:"MANUT",classe:"MANUTENCAO DE MAQUINAS E EQUIPAMENTOS (CUSTO)",projeto:"CORPORATIVO MATRIZ",raiz:2,obs:"Pecas/rolamentos"},"GALMAQ":{cc:"MANUTENCAO GERAL",ccCod:"MANUT",classe:"MANUTENCAO DE MAQUINAS E EQUIPAMENTOS (CUSTO)",projeto:"CORPORATIVO MATRIZ",raiz:2,obs:"Equipamentos manutencao"},"JOIN QUIMICA":{cc:"Setor SEGURANCA E ESTERILIZACAO",ccCod:"IND",classe:"LIMPEZA E CONSERVACAO (CUSTO)",projeto:"MATERIAIS PARA LIMPEZA",raiz:6,obs:"Produtos de limpeza industrial"},"UNIMED":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"ASSISTENCIA MEDICA (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Plano de saude"},"FEEDZ":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"SISTEMAS DE INFORMACOES (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Sistema RH/engajamento"},"ESCRITA CONTABILIDADE":{cc:"FINANCEIRO / CONTABILIDADE",ccCod:"ADM",classe:"SERVICOS DE CONTABILIDADE (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Contabilidade terceirizada"},"GRUPO ALPHA":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"SEGURANCA E VIGILANCIA (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Seguranca patrimonial"},"SEM PARAR":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"COMBUSTIVEIS E LUBRIFICANTES (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Pedagio/tag veiculos"},"DIGILOQ":{cc:"ADMINISTRATIVO GERAL",ccCod:"ADM",classe:"LOCACAO DE VEICULOS (ADM)",projeto:"CORPORATIVO MATRIZ",raiz:4,obs:"Frota locada"},"MANA REFEICOES":{cc:"MARKETING",ccCod:"MKT",classe:"PROMOCOES E EVENTOS (MKT)",projeto:"por evento",raiz:5,obs:"Alimentacao em eventos"},"GIGA SOLUCOES":{cc:"MARKETING",ccCod:"MKT",classe:"AGENCIAS E FREELANCERS (MKT)",projeto:"GIRO NUXCELL I 2026",raiz:5,obs:"Audiovisual para eventos"},"IMPRA GRAFICA":{cc:"Linha PET",ccCod:"PET",classe:"MATERIAIS DE PROPAGANDA (MKT)",projeto:"CORPORATIVO MATRIZ",raiz:5,obs:"Material grafico PET"},"GB GELO SECO":{cc:"P&D",ccCod:"PD",classe:"MATERIAIS E INSUMOS (P&D)",projeto:"CORPORATIVO MATRIZ",raiz:8,obs:"Insumo P&D"},"RODONAVES":{cc:"Linha correspondente",ccCod:"VEN",classe:"FRETES S/VENDAS (VEN)",projeto:"CORPORATIVO MATRIZ",raiz:7,obs:"Transportadora"}};
+var FORNECEDORES_BD={};
+var REGRAS_KEYWORDS=[{keys:["liofilizador"],raiz:3,cc:"Capex EQUIP. INDUSTRIAIS",classe:"MAQUINAS E EQUIPAMENTOS",projeto:"LIOFILIZADOR",conf:"ALTO"},{keys:["maquina","equipamento industrial","compressor","misturador","seladora"],raiz:3,cc:"Capex EQUIP. INDUSTRIAIS",classe:"MAQUINAS E EQUIPAMENTOS",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["obra civil","construcao","reforma estrutural"],raiz:3,cc:"Capex INFRAESTRUTURA",classe:"OBRAS CIVIS",projeto:"ADEQUACOES",conf:"ALTO"},{keys:["software","sistema erp","licenca","saas","aplicativo"],raiz:3,cc:"Capex TI / TI (ADM)",classe:"SISTEMAS APLICATIVOS/SOFTWARE",projeto:"CORPORATIVO MATRIZ",conf:"MEDIO",obs:"Assinatura mensal: SISTEMAS DE INFORMACOES (ADM). Licenca permanente: CAPEX INTANGIVEL."},{keys:["computador","notebook","servidor","monitor","hardware"],raiz:3,cc:"Capex TI & INFORMATICA",classe:"EQUIPAMENTOS DE INFORMATICA",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["movel","cadeira","mesa","armario"],raiz:3,cc:"Capex MOBILIARIO",classe:"MOVEIS E UTENSILIOS",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["marca","patente","registro marca","inpi"],raiz:3,cc:"Capex INTANGIVEL",classe:"MARCAS DIREITOS E PATENTES",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["manutencao","reparo","peca","rolamento","correia"],raiz:2,cc:"MANUTENCAO GERAL",classe:"MANUTENCAO DE MAQUINAS E EQUIPAMENTOS (CUSTO)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["manutencao predial","eletrica predial","hidraulica","pintura"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"MANUTENCAO PREDIAL (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["limpeza","higienizac","desinfeccao","produto limpeza"],raiz:6,cc:"Setor SEGURANCA E ESTERILIZACAO",classe:"LIMPEZA E CONSERVACAO (CUSTO)",projeto:"MATERIAIS PARA LIMPEZA",conf:"ALTO"},{keys:["feira","exposicao","stand","estande","congress","event"],raiz:5,cc:"MARKETING ou Linha especifica",classe:"FEIRAS E EXPOSICOES (MKT)",projeto:"por evento",conf:"ALTO",obs:"Feira de linha especifica: CC da linha. Institucional: MARKETING."},{keys:["brinde","brindes","uniforme","camisa","camiseta"],raiz:5,cc:"MARKETING",classe:"BRINDES E DONATIVOS (MKT)",projeto:"BRINDES",conf:"ALTO"},{keys:["video","audiovisual","filmagem","animacao","edicao de video"],raiz:5,cc:"MARKETING",classe:"AGENCIAS E FREELANCERS (MKT)",projeto:"EDICAO DE VIDEO",conf:"ALTO"},{keys:["agencia","criativo","design grafico","identidade visual","publicidade"],raiz:5,cc:"MARKETING",classe:"AGENCIAS E FREELANCERS (MKT)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["propaganda","anuncio","midia","google ads","meta ads"],raiz:5,cc:"MARKETING",classe:"PROPAGANDA E PUBLICIDADE (MKT)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["material impresso","folder","catalogo","flyer","banner"],raiz:5,cc:"MARKETING",classe:"MATERIAIS IMPRESSOS (MKT)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["patrocinio","patrocinador"],raiz:5,cc:"MARKETING",classe:"PATROCINIOS (MKT)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["plataforma digital","analytics","data analytics","crm"],raiz:5,cc:"MARKETING",classe:"PLATAFORMAS E DATA ANALYTICS (MKT)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["passagem aerea","latam","gol linhas","azul linhas"],raiz:7,cc:"Linha correspondente / MARKETING / ADM",classe:"PASSAGENS (VEN)",projeto:"por evento/RDV",conf:"MEDIO",obs:"Confirmar qual setor viajou para definir CC."},{keys:["hospedagem","hotel","pousada"],raiz:7,cc:"Linha correspondente / MARKETING / ADM",classe:"HOSPEDAGEM (VEN)",projeto:"por evento/RDV",conf:"MEDIO",obs:"Confirmar CC pelo setor do viajante."},{keys:["combustivel","gasolina","etanol","abastecimento"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"COMBUSTIVEIS E LUBRIFICANTES (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["advocacia","advogado","juridico","assessoria juridica"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"SERVICOS DE ADVOCACIA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["contabilidade","contador","fiscal","escrita fiscal"],raiz:4,cc:"FINANCEIRO / CONTABILIDADE",classe:"SERVICOS DE CONTABILIDADE (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["consultoria","consultor"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"SERVICOS DE CONSULTORIA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"MEDIO"},{keys:["seguranca","vigilancia","porteiro"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"SEGURANCA E VIGILANCIA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["plano de saude","convenio medico","exame medico","saude ocupacional"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"ASSISTENCIA MEDICA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["treinamento","capacitacao","curso","workshop"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"APERFEICOAMENTO PROFISSIONAL (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["material escritorio","papel","caneta","toner"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"MATERIAL DE ESCRITORIO (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["locacao veiculo","aluguel carro","locadora"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"LOCACAO DE VEICULOS (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["copa","cozinha","cafe","agua mineral"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"COPA E COZINHA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["energia eletrica","celesc","conta luz"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"ENERGIA ELETRICA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["telefone","internet","provedor","telecom","fibra"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"TELEFONE E INTERNET (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["seguro","apolice"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"SEGUROS (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["confraternizacao","festa","celebracao"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"CONFRATERNIZACOES (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["cesta basica","cesta natal"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"CESTAS E BRINDES (ADM)",projeto:"por data",conf:"ALTO"},{keys:["auditoria","certificacao","iso","gmp","bpf"],raiz:4,cc:"ADMINISTRATIVO GERAL",classe:"AUDITORIAS E CERTIFICACOES (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["materia prima","insumo industrial","ingrediente ativo"],raiz:6,cc:"Setor producao correspondente",classe:"INSUMOS",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["embalagem","rotulo","frasco","pote","sache industrial"],raiz:6,cc:"Setor SACHE / PASTA / PO / LIQUIDO",classe:"EMBALAGEM",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["epi","equipamento protecao","luva","capacete"],raiz:6,cc:"Setor responsavel",classe:"MATERIAL DE SEGURANCA EPI (CUSTO)",projeto:"EPIS",conf:"ALTO"},{keys:["analise laboratorial","laudo"],raiz:6,cc:"CONTROLE DE QUALIDADE / P&D",classe:"ANALISES LABORATORIAIS (CUSTO ou VEN)",projeto:"ANALISES LABORATORIAIS",conf:"MEDIO",obs:"Confirmar se e para QC (CUSTO), P&D ou venda (VEN)."},{keys:["frete","transportadora","carreto"],raiz:7,cc:"Linha correspondente / Supply Chain",classe:"FRETES S/VENDAS (VEN) ou FRETES E CARRETOS (CUSTO)",projeto:"CORPORATIVO MATRIZ",conf:"MEDIO",obs:"Frete de venda: VEN. Frete interno/compra: CUSTO."},{keys:["pesquisa","ensaio clinico","teste eficacia","protocolo"],raiz:8,cc:"P&D",classe:"PESQUISAS E ENSAIOS CLINICOS (P&D)",projeto:"CORPORATIVO MATRIZ",conf:"ALTO"},{keys:["p e d","pesquisa e desenvolvimento","inovacao"],raiz:8,cc:"P&D",classe:"SERVICOS GERAIS (P&D)",projeto:"CORPORATIVO MATRIZ",conf:"MEDIO"},{keys:["servico pj","pessoa juridica","prestacao de servico"],raiz:4,cc:"conforme departamento",classe:"SERVICOS PESSOA JURIDICA (ADM)",projeto:"CORPORATIVO MATRIZ",conf:"MEDIO",obs:"Verificar qual departamento contratou o servico."}];
+var GRUPOS={1:{nome:"PROJETOS GENERICOS",cor:"#607d8b"},2:{nome:"MANUTENCAO",cor:"#795548"},3:{nome:"CAPEX",cor:"#1565c0"},4:{nome:"ADMINISTRATIVO",cor:"#2e7d32"},5:{nome:"MARKETING",cor:"#ad1457"},6:{nome:"INDUSTRIAL (CUSTO)",cor:"#e65100"},7:{nome:"COMERCIAL (VEN)",cor:"#6a1b9a"},8:{nome:"P&D",cor:"#00695c"}};
+var CLASSE_RAIZ={"ADM":4,"ADMINISTRATIVO":4,"MKT":5,"MARKETING":5,"VEN":7,"VENDAS":7,"COMERCIAL":7,"CUSTO":6,"INDUSTRIAL":6,"P&D":8,"CAPEX":3,"INVESTIMENTO":3,"MANUT":2,"MANUTENCAO":2};
+var CC_RAIZ={"ADM GERAL":4,"ADMINISTRATIVO GERAL":4,"RH":4,"FINANCEIRO":4,"CONTABILIDADE":4,"TI":4,"MARKETING":5,"LINHA PET":7,"PET":7,"LINHA PRODUCAO":7,"LINHA INGREDIENTES":7,"SETOR PO":6,"SETOR SACHE":6,"SETOR LIQUIDO":6,"SETOR INGREDIENTES":6,"LABORATORIO":6,"MANUTENCAO GERAL":2,"CAPEX":3,"P&D":8};
+var CLASSES_LISTA=["GRATIFICACOES (ADM)","SERVICOS PESSOA JURIDICA (ADM)","SISTEMAS DE INFORMACOES (ADM)","SERVICOS DE CONSULTORIA (ADM)","SERVICOS DE ADVOCACIA (ADM)","AUDITORIAS E CERTIFICACOES (ADM)","SEGURANCA E VIGILANCIA (ADM)","MANUTENCAO PREDIAL (ADM)","LIMPEZA E CONSERVACAO (ADM)","LOCACAO DE VEICULOS (ADM)","MANUTENCAO DE VEICULOS (ADM)","DESPESAS DE VIAGENS (ADM)","MATERIAL DE ESCRITORIO (ADM)","COPA E COZINHA (ADM)","APERFEICOAMENTO PROFISSIONAL (ADM)","BENS DE PEQUENO VALOR (ADM)","CESTAS E BRINDES (ADM)","CONFRATERNIZACOES (ADM)","ASSISTENCIA MEDICA (ADM)","ENERGIA ELETRICA (ADM)","TELEFONE E INTERNET (ADM)","SEGUROS (ADM)","SERVICOS DE CONTABILIDADE (ADM)","COMBUSTIVEIS E LUBRIFICANTES (ADM)","BRINDES E DONATIVOS (MKT)","FEIRAS E EXPOSICOES (MKT)","PROPAGANDA E PUBLICIDADE (MKT)","PLATAFORMAS E DATA ANALYTICS (MKT)","PATROCINIOS (MKT)","MATERIAIS IMPRESSOS (MKT)","AGENCIAS E FREELANCERS (MKT)","PROMOCOES E EVENTOS (MKT)","MATERIAIS DE PROPAGANDA (MKT)","PASSAGENS (VEN)","VIAGENS E LOCOMOCAO (VEN)","HOSPEDAGEM (VEN)","FRETES S/VENDAS (VEN)","ANALISES LABORATORIAIS (VEN)","INSUMOS","EMBALAGEM","ANALISES LABORATORIAIS (CUSTO)","MATERIAL DE USO E CONSUMO (CUSTO)","MATERIAL DE SEGURANCA EPI (CUSTO)","MANUTENCAO DE MAQUINAS E EQUIPAMENTOS (CUSTO)","LIMPEZA E CONSERVACAO (CUSTO)","PESQUISAS E ENSAIOS CLINICOS (P&D)","MATERIAIS E INSUMOS (P&D)","SERVICOS GERAIS (P&D)","MAQUINAS E EQUIPAMENTOS","OBRAS CIVIS","EQUIPAMENTOS DE INFORMATICA","MOVEIS E UTENSILIOS","SISTEMAS APLICATIVOS/SOFTWARE","MARCAS DIREITOS E PATENTES","ADIANTAMENTOS A FORNECEDORES"];
+var CCS_LISTA=["ADMINISTRATIVO GERAL","RH","FINANCEIRO","CONTABILIDADE & FISCAL","TI","COMPRAS","LOGISTICA","ALMOXARIFADO","LINHA PET","LINHA PRODUCAO","LINHA AGRICOLA","LINHA INGREDIENTES","MARKETING","CONTROLE DE QUALIDADE","LABORATORIO","MANUTENCAO GERAL","SETOR PO","SETOR SACHE","SETOR LIQUIDO","SETOR INGREDIENTES","SETOR PASTA","SETOR AGRICOLA","P&D","CAPEX INFRAESTRUTURA","CAPEX EQUIP INDUSTRIAIS","CAPEX TI INFORMATICA","CAPEX MOBILIARIO","CAPEX INTANGIVEL"];
+var PROJETOS_LISTA=["CORPORATIVO MATRIZ","CORPORATIVO FILIAL","FENAGRA 2026","CBA 2026","APA 2026","PETVET 2026","CAT CONGRESS 2026","BRINDES","EDICAO DE VIDEO","GIRO NUXCELL I 2026","LIOFILIZADOR","BIN SISTEMA DE MISTURA","ADEQUACOES","SELADORA","MATERIAIS PARA LIMPEZA","EPIS","RDV 2026","ANALISES LABORATORIAIS (CUSTO)","ANALISES LABORATORIAIS (VEN)","DIA DAS MAES"];
+var fornecedoresLista=[];
+function norm(s){return(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g," ")}
+function getFornecedores(){return Object.assign({},FORNECEDORES_LOCAL,FORNECEDORES_BD)}
+function matchFornecedor(nome){var n=norm(nome),all=getFornecedores();for(var key in all){if(n.includes(norm(key)))return Object.assign({key:key},all[key],{matchType:"FORNECEDOR"})}return null}
+function matchKeywords(desc,tipo){var d=norm(desc+" "+tipo),best=null;for(var r of REGRAS_KEYWORDS){for(var kw of r.keys){if(d.includes(norm(kw))){if(!best||r.conf==="ALTO")best=r;break}}if(best&&best.conf==="ALTO")break}return best}
+function aplicarRegraLinha(linha,regra){if(!linha)return regra;var map={PET:{cc:"Linha PET"},PRODUCAO:{cc:"Linha PRODUCAO"},AGRICOLA:{cc:"Linha AGRICOLA"},INGREDIENTES:{cc:"Linha INGREDIENTES"}};var l=map[linha];if(!l)return regra;if(regra.raiz===7||(regra.raiz===5&&regra.classe&&regra.classe.includes("FEIRA")))return Object.assign({},regra,{cc:l.cc});return regra}
+function confBadge(c){var m={ALTO:"conf-alto",MEDIO:"conf-medio",BAIXO:"conf-baixo"},lb={ALTO:"Alta",MEDIO:"Media",BAIXO:"Baixa"};return'<span class="conf-badge '+(m[c]||"conf-baixo")+'">'+(lb[c]||c)+"</span>"}
+async function classificar(){var f=document.getElementById("inp-fornecedor").value.trim(),d=document.getElementById("inp-descricao").value.trim(),l=document.getElementById("inp-linha").value,t=document.getElementById("inp-tipo").value;if(!f&&!d){alert("Informe o fornecedor ou a descricao.");return}var res=null,fonte="";if(f){var m=matchFornecedor(f);if(m){res=m;fonte="Fornecedor reconhecido: <strong>"+m.key+"</strong>"}}if(!res&&(d||t)){var m2=matchKeywords(d,t);if(m2){res=m2;fonte="Palavras-chave na descricao"}}if(res&&l)res=aplicarRegraLinha(l,res);var div=document.getElementById("res-classificar"),box=document.getElementById("res-box-classificar"),cont=document.getElementById("res-conteudo-classificar");div.classList.add("show");if(!res){box.className="result-box baixo";cont.innerHTML="<strong>Nao foi possivel classificar automaticamente</strong>"+confBadge("BAIXO")+'<p class="obs" style="margin-top:8px;">Nenhuma regra correspondeu. Adicione o fornecedor na aba Fornecedores.</p>';return}var conf=res.conf||(res.matchType==="FORNECEDOR"?"ALTO":"MEDIO"),ri=GRUPOS[res.raiz]||{};box.className="result-box "+(conf==="ALTO"?"alto":conf==="MEDIO"?"medio":"baixo");cont.innerHTML='<strong>Classificacao Sugerida</strong>'+confBadge(conf)+'<p class="obs" style="margin-top:4px;margin-bottom:10px;">Fonte: '+fonte+'</p><div class="dim"><div class="dim-item"><div class="lbl">Classe Financeira</div><div class="val">'+(res.classe||"?")+"</div></div>"+'<div class="dim-item"><div class="lbl">Centro de Custo</div><div class="val">'+(res.cc||"?")+"</div></div>"+'<div class="dim-item"><div class="lbl">Projeto</div><div class="val">'+(res.projeto||"CORPORATIVO MATRIZ")+"</div></div></div>"+'<div class="dim-item" style="margin-bottom:10px;"><div class="lbl">Grupo Hierarquico</div><div class="val" style="color:'+(ri.cor||"#333")+'">Raiz '+res.raiz+" - "+(ri.nome||"?")+"</div></div>"+(res.obs?'<div class="warn">'+res.obs+"</div>":"")+"<hr>"+'<p class="obs"><strong>Regra do Triangulo:</strong> CC + Classe + Projeto devem pertencer ao mesmo grupo (Raiz '+res.raiz+" - "+(ri.nome||"?")+")</p>";if(sbClient){await sbClient.from("classificacoes").insert({fornecedor:f,descricao:d,linha:l,tipo:t,classe_sugerida:res.classe,cc_sugerido:res.cc,projeto_sugerido:res.projeto,confianca:conf,fonte,raiz:res.raiz})}}
+async function validar(){var cl=document.getElementById("val-classe").value.trim(),cc=document.getElementById("val-cc").value.trim(),pj=document.getElementById("val-projeto").value.trim(),fn=document.getElementById("val-fornecedor").value.trim();if(!cl||!cc||!pj){alert("Informe Classe, CC e Projeto.");return}var erros=[],avisos=[],cn=norm(cl),ccn=norm(cc),pn=norm(pj),rCl=null,rCC=null;for(var kw in CLASSE_RAIZ){if(cn.includes(norm(kw))){rCl=CLASSE_RAIZ[kw];break}}for(var kw2 in CC_RAIZ){if(ccn.includes(norm(kw2))){rCC=CC_RAIZ[kw2];break}}if(rCl&&rCC&&rCl!==rCC)erros.push("Classe pertence ao grupo Raiz "+rCl+" ("+GRUPOS[rCl]?.nome+") mas CC pertence ao grupo Raiz "+rCC+" ("+GRUPOS[rCC]?.nome+").");if((cn.includes("mkt")||cn.includes("marketing"))&&!ccn.includes("marketing"))erros.push("Classe de Marketing deve usar CC MARKETING.");if((cn.includes("capex")||cn.includes("maquinas e equipamento")||cn.includes("obras civis")||cn.includes("sistemas aplicativos")||cn.includes("imoveis")||cn.includes("moveis e utensilios"))&&!ccn.includes("capex"))avisos.push("Classe de CAPEX geralmente requer CC especifico de CAPEX.");if((cn.includes("adm")||cn.includes("administrativo"))&&(ccn.includes("marketing")||ccn.includes("linha pet")||ccn.includes("linha produc")))erros.push("Classe ADM nao deve ser usada com CC de Marketing ou linhas comerciais.");var div=document.getElementById("res-validar"),box=document.getElementById("res-box-validar"),cont=document.getElementById("res-conteudo-validar");div.classList.add("show");var rs=erros.length===0?"OK":"ERRO";if(erros.length===0&&avisos.length===0){box.className="result-box ok";cont.innerHTML="<strong>Lancamento consistente</strong>"+'<p class="obs" style="margin-top:8px;">As tres dimensoes sao coerentes com a Regra do Triangulo.</p>'+(rCl?'<p class="obs" style="margin-top:5px;">Grupo: <strong>Raiz '+rCl+" - "+(GRUPOS[rCl]?.nome||"?")+"</strong></p>":"")}else{box.className="result-box erro";var h="<strong>Problemas encontrados</strong>";if(erros.length)h+='<ul class="err-list">'+erros.map(function(e){return"<li>"+e+"</li>"}).join("")+"</ul>";if(avisos.length)h+='<div class="warn">'+avisos.map(function(a){return"Atencao: "+a}).join("<br>")+"</div>";h+='<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:6px;font-size:.83rem;"><strong>Como corrigir:</strong> Verifique no Gd_Projetos se CC, Classe e Projeto pertencem a mesma raiz hierarquica.</div>';cont.innerHTML=h}if(sbClient){await sbClient.from("validacoes").insert({fornecedor:fn,classe:cl,cc,projeto:pj,resultado:rs,erros,avisos})}}
+async function carregarFornecedoresBD(){if(!sbClient)return;var r=await sbClient.from("fornecedores").select("*").order("nome");if(r.error||!r.data)return;fornecedoresLista=r.data;FORNECEDORES_BD={};r.data.filter(function(f){return f.ativo}).forEach(function(f){FORNECEDORES_BD[f.nome.toUpperCase()]={cc:f.cc,classe:f.classe,projeto:f.projeto,raiz:f.raiz,obs:f.obs,matchType:"BD"}});renderTabelaFornecedores(r.data)}
+function renderTabelaFornecedores(lista){var tb=document.getElementById("tbody-fornecedores");if(!lista||lista.length===0){tb.innerHTML='<tr><td colspan="7" class="empty">Nenhum fornecedor cadastrado.</td></tr>';return}tb.innerHTML=lista.map(function(f){return"<tr><td><strong>"+f.nome+"</strong></td><td>"+(f.cc||"?")+"</td><td>"+(f.classe||"?")+"</td><td>"+(f.projeto||"?")+"</td><td>"+(f.obs||"")+'</td><td><span class="'+(f.ativo?"badge-ativo":"badge-inativo")+'">'+(f.ativo?"Ativo":"Inativo")+'</span></td><td><button class="btn btn-sec btn-sm" onclick="editarFornecedor('+f.id+')">Editar</button></td></tr>'}).join("")}
+function filtrarFornecedores(b){if(!b){renderTabelaFornecedores(fornecedoresLista);return}var n=norm(b);renderTabelaFornecedores(fornecedoresLista.filter(function(f){return norm(f.nome).includes(n)||norm(f.cc||"").includes(n)||norm(f.classe||"").includes(n)}))}
+function abrirModalFornecedor(){document.getElementById("modal-title").textContent="Novo Fornecedor";document.getElementById("modal-id").value="";document.getElementById("btn-excluir").style.display="none";["mf-nome","mf-cc","mf-classe","mf-projeto","mf-obs"].forEach(function(i){document.getElementById(i).value=""});document.getElementById("modal-fornec").classList.add("open")}
+function editarFornecedor(id){var f=fornecedoresLista.find(function(x){return x.id===id});if(!f)return;document.getElementById("modal-title").textContent="Editar Fornecedor";document.getElementById("modal-id").value=f.id;document.getElementById("mf-nome").value=f.nome||"";document.getElementById("mf-cc").value=f.cc||"";document.getElementById("mf-classe").value=f.classe||"";document.getElementById("mf-projeto").value=f.projeto||"";document.getElementById("mf-obs").value=f.obs||"";document.getElementById("btn-excluir").style.display="inline-block";document.getElementById("modal-fornec").classList.add("open")}
+function fecharModal(){document.getElementById("modal-fornec").classList.remove("open")}
+async function salvarFornecedor(){if(!sbClient){alert("Configure o Supabase na aba Configurar.");return}var id=document.getElementById("modal-id").value,dados={nome:document.getElementById("mf-nome").value.trim().toUpperCase(),cc:document.getElementById("mf-cc").value.trim(),classe:document.getElementById("mf-classe").value.trim(),projeto:document.getElementById("mf-projeto").value.trim(),obs:document.getElementById("mf-obs").value.trim(),atualizado_em:new Date().toISOString(),ativo:true};if(!dados.nome){alert("Nome e obrigatorio.");return}var err;if(id){({error:err}=await sbClient.from("fornecedores").update(dados).eq("id",id))}else{({error:err}=await sbClient.from("fornecedores").insert(dados))}if(err){alert("Erro: "+err.message);return}fecharModal();await carregarFornecedoresBD()}
+async function excluirFornecedor(){if(!sbClient)return;var id=document.getElementById("modal-id").value;if(!id||!confirm("Excluir este fornecedor?"))return;await sbClient.from("fornecedores").update({ativo:false}).eq("id",id);fecharModal();await carregarFornecedoresBD()}
+async function carregarHistorico(){if(!sbClient){document.getElementById("hist-classificacoes").innerHTML='<div class="empty">Configure o Supabase para ver o historico.</div>';document.getElementById("hist-validacoes").innerHTML='<div class="empty">Configure o Supabase para ver o historico.</div>';return}var rc=await sbClient.from("classificacoes").select("*").order("criado_em",{ascending:false}).limit(30),rv=await sbClient.from("validacoes").select("*").order("criado_em",{ascending:false}).limit(30),fmt=function(d){return new Date(d).toLocaleString("pt-BR")},hc=document.getElementById("hist-classificacoes"),hv=document.getElementById("hist-validacoes");if(!rc.data||rc.data.length===0)hc.innerHTML='<div class="empty">Nenhuma classificacao registrada ainda.</div>';else hc.innerHTML=rc.data.map(function(c){return'<div class="hist-item"><strong>'+(c.fornecedor||"?")+"</strong> - <em>"+(c.classe_sugerida||"?")+"</em> / "+(c.cc_sugerido||"?")+" / "+(c.projeto_sugerido||"?")+confBadge(c.confianca||"")+'<div class="hist-meta">'+fmt(c.criado_em)+(c.descricao?" - "+c.descricao.substring(0,60):"")+"</div></div>"}).join("");if(!rv.data||rv.data.length===0)hv.innerHTML='<div class="empty">Nenhuma validacao registrada ainda.</div>';else hv.innerHTML=rv.data.map(function(v){return'<div class="hist-item"><span style="color:'+(v.resultado==="OK"?"#1a7a4a":"#c62828")+';font-weight:700;">'+(v.resultado==="OK"?"OK":"ERRO")+"</span> - "+(v.classe||"?")+" / "+(v.cc||"?")+" / "+(v.projeto||"?")+(v.erros&&v.erros.length?'<div style="font-size:.78rem;color:#c62828;margin-top:3px;">'+v.erros.join("; ")+"</div>":"")+'<div class="hist-meta">'+fmt(v.criado_em)+(v.fornecedor?" - "+v.fornecedor:"")+"</div></div>"}).join("")}
+function switchTab(t){document.querySelectorAll(".tab").forEach(function(el,i){el.classList.toggle("active",["classificar","validar","fornecedores","historico","config"][i]===t)});document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active")});document.getElementById("pg-"+t).classList.add("active");if(t==="fornecedores"&&sbClient)carregarFornecedoresBD();if(t==="historico")carregarHistorico()}
+function limpar(t){if(t==="classificar"){["inp-fornecedor","inp-descricao"].forEach(function(i){document.getElementById(i).value=""});document.getElementById("inp-linha").value="";document.getElementById("inp-tipo").value="";document.getElementById("fornec-hint").textContent="";document.getElementById("res-classificar").classList.remove("show")}else{["val-classe","val-cc","val-projeto","val-fornecedor"].forEach(function(i){document.getElementById(i).value=""});document.getElementById("res-validar").classList.remove("show")}}
+function sugerirFornecedor(v){var hint=document.getElementById("fornec-hint");if(!v||v.length<3){hint.textContent="";return}var m=matchFornecedor(v);if(m){hint.innerHTML="Reconhecido: <strong>"+m.key+"</strong> - "+(m.obs||m.cc);hint.style.color="#1a7a4a"}else hint.textContent=""}
+function populateDL(id,items){var dl=document.getElementById(id);if(dl)dl.innerHTML=items.map(function(i){return'<option value="'+i+'">'}).join("")}
+var cfg=getConfig();
+if(cfg.url)document.getElementById("cfg-url").value=cfg.url;
+if(cfg.key)document.getElementById("cfg-key").value=cfg.key;
+populateDL("lista-classes",CLASSES_LISTA);
+populateDL("lista-ccs",CCS_LISTA);
+populateDL("lista-projetos",PROJETOS_LISTA);
+initSupabase();
+</script>
+</body>
+  </html>
