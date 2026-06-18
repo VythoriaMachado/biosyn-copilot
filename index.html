@@ -612,6 +612,17 @@ const FORNECEDORES_LOCAL = {
   "DIGILOQ": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "LOCACAO DE VEICULOS (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Frota locada" },
   "MANA REFEICOES": { cc: "CC do departamento solicitante", ccCod: "ADM", classe: "ALIMENTACAO (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "CC = departamento que solicitou (ex: FINANCEIRO, RH, TI, DIRETORIA, LOGISTICA, COMPRAS, ALMOXARIFADO, PCPM, SUPPLY CHAIN, ADMINISTRATIVO GERAL)" },
   "GIGA SOLUCOES": { cc: "MARKETING", ccCod: "MKT", classe: "AGENCIAS E FREELANCERS (MKT)", projeto: "GIRO NUXCELL I 2026", raiz: 5, obs: "Audiovisual para eventos" },
+  "TIPOTIL": { variants: [
+    { cc: "MARKETING", ccCod: "MKT", classe: "MATERIAIS IMPRESSOS (MKT)", projeto: "CORPORATIVO MATRIZ", raiz: 5,
+      disambig_keys: ["folder","flyer","catalogo","catálogo","impresso"],
+      desc_ex: ["Folder linha PET", "Catálogo produtos BioSyn", "Flyer evento"] },
+    { cc: "MARKETING", ccCod: "MKT", classe: "MATERIAIS DE PROPAGANDA (MKT)", projeto: "CORPORATIVO MATRIZ", raiz: 5,
+      disambig_keys: ["banner","display","placa","totem","adesivo","faixa","painel","expositor","lona","backlight"],
+      desc_ex: ["Banner stand feira", "Display PDV", "Placa identificação", "Totem evento"] },
+    { cc: "Setor correspondente", ccCod: "IND", classe: "EMBALAGEM", projeto: "CORPORATIVO MATRIZ", raiz: 6,
+      disambig_keys: ["bula","embalagem","rótulo","rotulo","frasco","pote","caixa","cartucho","sachet","blister"],
+      desc_ex: ["Bula produto Avesyn", "Embalagem frasco Nuxcell", "Rótulo linha Ingredientes"] }
+  ]},
   "IMPRA GRAFICA": { cc: "Linha PET", ccCod: "PET", classe: "MATERIAIS DE PROPAGANDA (MKT)", projeto: "CORPORATIVO MATRIZ", raiz: 5, obs: "Material gráfico PET" },
   "NB CALDONHO": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "CESTAS E BRINDES (ADM)", projeto: "DIA DAS MAES", raiz: 4, obs: "Cestas/brindes internos" },
   "GB GELO SECO": { cc: "P&D", ccCod: "PD", classe: "MATERIAIS E INSUMOS (P&D)", projeto: "CORPORATIVO MATRIZ", raiz: 8, obs: "Insumo P&D" },
