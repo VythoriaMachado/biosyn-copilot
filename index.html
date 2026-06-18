@@ -814,16 +814,30 @@ function matchKeywords(descricao, tipo) {
   return best;
 }
 
-function aplicarRegraLinha(linha, regra) {
+function aplicarRegraLinha(linha, regra, descricao) {
   if (!linha) return regra;
   const linhaMap = {
-    "PET": { cc: "Linha PET" }, "PRODUCAO": { cc: "Linha PRODUÇÃO" },
-    "AGRICOLA": { cc: "Linha AGRÍCOLA" }, "INGREDIENTES": { cc: "Linha INGREDIENTES" },
+    "PET":          "Linha PET",
+    "PRODUCAO":     "Linha PRODUCAO",
+    "AGRICOLA":     "Linha AGRICOLA",
+    "INGREDIENTES": "Linha INGREDIENTES",
   };
-  const l = linhaMap[linha];
-  if (!l) return regra;
-  if (regra.raiz === 7 || (regra.raiz === 5 && regra.classe && regra.classe.includes("FEIRA"))) {
-    return { ...regra, cc: l.cc };
+  const ccLinha = linhaMap[linha];
+  if (!ccLinha) return regra;
+
+  // Raiz 5 (MKT) e Raiz 7 (VEN): CC sempre = Linha quando linha selecionada
+  if (regra.raiz === 5 || regra.raiz === 7) {
+    // Projeto baseado no tipo de material descrito
+    const d = norm(descricao || "");
+    let projeto = regra.projeto || "CORPORATIVO MATRIZ";
+    if (d.includes("folder"))                           projeto = "FOLDER";
+    else if (d.includes("flyer") || d.includes("flyers")) projeto = "FLYER";
+    else if (d.includes("catalogo") || d.includes("catálogo")) projeto = "CATALOGO";
+    else if (d.includes("banner"))                      projeto = "BANNER";
+    else if (d.includes("display"))                     projeto = "DISPLAY";
+    else if (d.includes("bula"))                        projeto = "BULA";
+    else if (d.includes("embalagem") || d.includes("rotulo") || d.includes("rótulo")) projeto = "EMBALAGEM";
+    return { ...regra, cc: ccLinha, projeto };
   }
   return regra;
 }
@@ -855,7 +869,7 @@ async function classificar() {
     const m = matchKeywords(descricao, tipo);
     if (m) { resultado = m; fonte = "Palavras-chave na descrição"; }
   }
-  if (resultado && resultado.matchType !== "FORNECEDOR_MULTI" && linha) resultado = aplicarRegraLinha(linha, resultado);
+  if (resultado && resultado.matchType !== "FORNECEDOR_MULTI" && linha) resultado = aplicarRegraLinha(linha, resultado, descricao);
 
   const div = document.getElementById("res-classificar");
   const box = document.getElementById("res-box-classificar");
