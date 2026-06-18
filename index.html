@@ -582,7 +582,10 @@ const FORNECEDORES_LOCAL = {
   "QUIRON": { cc: "MARKETING", ccCod: "MKT", classe: "AGENCIAS E FREELANCERS (MKT)", projeto: "CORPORATIVO MATRIZ", raiz: 5, obs: "Agência de conteúdo" },
   "KETLYN": { cc: "MARKETING", ccCod: "MKT", classe: "AGENCIAS E FREELANCERS (MKT)", projeto: "CORPORATIVO MATRIZ", raiz: 5, obs: "Freelancer marketing" },
   "RASEC FEIRAS": { cc: "Linha PET", ccCod: "PET", classe: "FEIRAS E EXPOSICOES (MKT)", projeto: "CAT CONGRESS 2026", raiz: 5, obs: "Infraestrutura de feira PET" },
-  "KALE EVENTOS": { cc: "Linha PET / Linha INGREDIENTES", ccCod: "PET", classe: "FEIRAS E EXPOSICOES (MKT)", projeto: "CBA 2026 / FENAGRA 2026", raiz: 5, obs: "Infraestrutura de feiras" },
+  "KALE EVENTOS": { variants: [
+    { cc: "Linha PET", ccCod: "PET", classe: "FEIRAS E EXPOSICOES (MKT)", projeto: "CAT CONGRESS 2026", raiz: 5, desc_ex: ["Estrutura stand Cat Congress 2026", "Locação mobiliário Cat Congress"] },
+    { cc: "Linha INGREDIENTES", ccCod: "ING", classe: "FEIRAS E EXPOSICOES (MKT)", projeto: "FENAGRA 2026", raiz: 5, desc_ex: ["Estrutura stand FENAGRA 2026", "Montagem stand ingredientes"] }
+  ]},
   "IKA EMBORRACHADOS": { cc: "MARKETING", ccCod: "MKT", classe: "BRINDES E DONATIVOS (MKT)", projeto: "BRINDES", raiz: 5, obs: "Brindes/materiais promocionais" },
   "LIOBRAS": { cc: "Capex EQUIP. INDUSTRIAIS", ccCod: "CAPEX", classe: "MAQUINAS E EQUIPAMENTOS", projeto: "LIOFILIZADOR", raiz: 3, obs: "Aquisição de ativo CAPEX" },
   "ENGFARMA": { cc: "Capex EQUIP. INDUSTRIAIS", ccCod: "CAPEX", classe: "MAQUINAS E EQUIPAMENTOS", projeto: "BIN SISTEMA DE MISTURA", raiz: 3, obs: "Aquisição de ativo CAPEX" },
@@ -750,11 +753,27 @@ function getFornecedores() {
   return { ...FORNECEDORES_LOCAL, ...FORNECEDORES_BD };
 }
 
-function matchFornecedor(nome) {
+function matchFornecedor(nome, descricao) {
   const n = norm(nome);
+  const d = norm(descricao || "");
   const all = getFornecedores();
   for (const [key, val] of Object.entries(all)) {
-    if (n.includes(norm(key))) return { key, ...val, matchType: "FORNECEDOR" };
+    if (!n.includes(norm(key))) continue;
+    // Fornecedor com múltiplas classificações possíveis
+    if (val.variants) {
+      // Tenta disambiguar pela descrição
+      for (const v of val.variants) {
+        const exemplos = (v.desc_ex || []).map(norm);
+        const keywords = (v.disambig_keys || []).map(norm);
+        const allHints = [...exemplos, ...keywords];
+        if (allHints.some(hint => d.includes(hint) || hint.split(" ").filter(w=>w.length>3).some(w=>d.includes(w)))) {
+          return { key, ...v, matchType: "FORNECEDOR" };
+        }
+      }
+      // Não foi possível disambiguar — retorna todas as opções
+      return { key, multipleOptions: val.variants, matchType: "FORNECEDOR_MULTI" };
+    }
+    return { key, ...val, matchType: "FORNECEDOR" };
   }
   return null;
 }
@@ -807,14 +826,14 @@ async function classificar() {
   let resultado = null, fonte = "";
 
   if (fornecedor) {
-    const m = matchFornecedor(fornecedor);
+    const m = matchFornecedor(fornecedor, descricao);
     if (m) { resultado = m; fonte = `Fornecedor reconhecido: <strong>${m.key}</strong>`; }
   }
   if (!resultado && (descricao || tipo)) {
     const m = matchKeywords(descricao, tipo);
     if (m) { resultado = m; fonte = "Palavras-chave na descrição"; }
   }
-  if (resultado && linha) resultado = aplicarRegraLinha(linha, resultado);
+  if (resultado && resultado.matchType !== "FORNECEDOR_MULTI" && linha) resultado = aplicarRegraLinha(linha, resultado);
 
   const div = document.getElementById("res-classificar");
   const box = document.getElementById("res-box-classificar");
@@ -824,6 +843,42 @@ async function classificar() {
   if (!resultado) {
     box.className = "result-box baixo";
     cont.innerHTML = `<div class="result-title">Não foi possível classificar automaticamente ${confBadge("BAIXO")}</div><p class="obs" style="margin-top:10px;">Nenhuma regra correspondeu. Verifique com a equipe de contabilidade ou adicione o fornecedor na aba Fornecedores.</p>`;
+    return;
+  }
+
+  // Modo: múltiplas classificações possíveis
+  if (resultado.matchType === "FORNECEDOR_MULTI") {
+    box.className = "result-box medio";
+    const opcoesHtml = resultado.multipleOptions.map((v, i) => {
+      const raizInfo = GRUPOS[v.raiz] || {};
+      const exemplos = (v.desc_ex || []).map(e => `<li>${e}</li>`).join("");
+      return `
+        <div style="border:1px solid var(--sky-mid);border-radius:10px;padding:14px 16px;margin-top:12px;background:var(--white);">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--sky);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Opção ${i+1}</div>
+          <div class="dim">
+            <div class="dim-item"><div class="lbl">Classe Financeira</div><div class="val">${v.classe||"—"}</div></div>
+            <div class="dim-item"><div class="lbl">Centro de Custo</div><div class="val">${v.cc||"—"}</div></div>
+            <div class="dim-item"><div class="lbl">Projeto</div><div class="val">${v.projeto||"CORPORATIVO MATRIZ"}</div></div>
+            <div class="dim-item dim-full"><div class="lbl">Grupo</div><div class="val"><span class="raiz-pill" style="background:${raizInfo.cor||'#334155'}18;color:${raizInfo.cor||'#334155'};">⬡ Raiz ${v.raiz} — ${raizInfo.nome||"—"}</span></div></div>
+          </div>
+          ${exemplos ? `<div style="margin-top:8px;font-size:0.78rem;color:var(--gray-dark);"><strong style="color:var(--navy);">Exemplos de lançamentos:</strong><ul style="margin:4px 0 0 16px;line-height:1.7;">${exemplos}</ul></div>` : ""}
+        </div>`;
+    }).join("");
+    cont.innerHTML = `
+      <div class="result-title">Múltiplas classificações possíveis ${confBadge("MEDIO")}</div>
+      <span class="fonte-tag">📌 ${fonte}</span>
+      <div class="warn" style="margin-top:10px;">⚠️ <span>A descrição informada não foi suficiente para identificar o tipo de lançamento. Confira os exemplos abaixo e escolha a opção correta.</span></div>
+      ${opcoesHtml}
+    `;
+    if (sbClient) {
+      await sbClient.from("classificacoes").insert({
+        fornecedor, descricao, linha, tipo,
+        classe_sugerida: "MÚLTIPLAS OPÇÕES",
+        cc_sugerido: resultado.multipleOptions.map(v=>v.cc).join(" / "),
+        projeto_sugerido: resultado.multipleOptions.map(v=>v.projeto).join(" / "),
+        confianca: "MEDIO", fonte, raiz: null
+      });
+    }
     return;
   }
 
