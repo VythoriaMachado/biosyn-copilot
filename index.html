@@ -953,18 +953,47 @@ async function validar() {
   if ((classeN.includes("capex") || classeN.includes("investimento") || classeN.includes("maquinas e equipamento") || classeN.includes("obras civis") || classeN.includes("sistemas aplicativos") || classeN.includes("imoveis") || classeN.includes("moveis e utensilios")) && !ccN.includes("capex")) {
     avisos.push("Classe de CAPEX geralmente requer CC específico de CAPEX.");
   }
-  // Regra ADM: classe administrativa só pode usar CC administrativo
-  const isClasseAdm = classeN.includes("adm") || classeN.includes("administrativo");
-  const CC_ADM_VALIDOS = ["recursos humanos","rh","financeiro","diretoria","presidencia","juridico","ti","tecnologia da informacao","tecnologia informacao","administrativo geral","administrativo","contabilidade","controladoria","compras","logistica","qualidade","regulatorio","producao","operacoes","almoxarifado","faturamento","pcpm","supply chain","gestao supply","gestao administrativo","gestao adm","manutencao geral","manutencao"];
-  const CC_NAO_ADM = ["gestao comercial","comercial","marketing","linha pet","linha producao","linha agricola","linha ingredientes","equinos","bovinos","suinos","aves","pet","nuxcell","avesyn","biomol","bioagrega"];
-  if (isClasseAdm) {
-    const ccEhNaoAdm = CC_NAO_ADM.some(kw => ccN.includes(norm(kw)));
-    const ccEhAdm = CC_ADM_VALIDOS.some(kw => ccN.includes(norm(kw)));
-    if (ccEhNaoAdm) {
-      erros.push(`Classe ADM não pode usar CC "${cc}". Lançamentos administrativos devem estar atrelados a CCs administrativos (ex: Recursos Humanos, Financeiro, TI, Diretoria).`);
-    } else if (!ccEhAdm) {
-      avisos.push(`CC "${cc}" não é reconhecido como centro de custo administrativo. Verifique se está correto para uma classe ADM.`);
+  // Grupos de CC oficiais BioSyn (Senior ERP)
+  const CC_GRUPOS = {
+    adm:        ["recursos humanos","financeiro","administrativo geral","contabilidade & fiscal","contabilidade fiscal","ti","gestao administrativo","supply chain","compras","logistica","almoxarifado","faturamento","pcpm","gestao supply chain","estrutura geral"],
+    comercial:  ["linha pet","linha producao","linha agricola","linha ingredientes","gestao comercial"],
+    marketing:  ["marketing","gestao marketing"],
+    industrial: ["garantia da qualidade","controle de qualidade","laboratorio","gestao garantia da qualidade","manutencao","manutencao industrial","manutencao geral","producao","setor po","setor sache","setor liquido","setor ingredientes","setor pasta","setor agricola","setor premix","seguranca e esterilizacao","industrial administrativo","gestao industrial"],
+    diretoria:  ["diretoria"],
+    pd:         ["p&d","gestao p&d"],
+    capex:      ["capex imobilizado","capex infraestrutura","capex equipamentos industriais","capex qualidade","capex p&d","capex ti","capex informatica","capex mobiliario","capex intangivel"]
+  };
+  function grupoCC(ccNorm) {
+    for (const [g, lista] of Object.entries(CC_GRUPOS)) {
+      if (lista.some(kw => ccNorm.includes(norm(kw)))) return g;
     }
+    return null;
+  }
+  const grupoDoCC = grupoCC(ccN);
+
+  // Regra ADM: classe administrativa só pode usar CC ADM ou DIRETORIA
+  const isClasseAdm = classeN.includes("adm") || classeN.includes("administrativo") || classeN.includes("alimentacao") || classeN.includes("combustivel") || classeN.includes("locacao") || classeN.includes("material de escritorio") || classeN.includes("telefone") || classeN.includes("energia") || classeN.includes("seguro") || classeN.includes("seguranca e vigilancia") || classeN.includes("confraterniz") || classeN.includes("cesta") || classeN.includes("auditoria") || classeN.includes("manutencao predial") || classeN.includes("advocacia") || classeN.includes("contabilidade") || classeN.includes("assistencia medica") || classeN.includes("aperfeicoamento") || classeN.includes("copa") || classeN.includes("sistemas de informacao") || classeN.includes("gratificac") || classeN.includes("produtividade") || classeN.includes("servicos pessoa juridica") || classeN.includes("servicos de consultoria");
+  if (isClasseAdm && grupoDoCC && !["adm","diretoria"].includes(grupoDoCC)) {
+    const nomeGrupo = {comercial:"Comercial",marketing:"Marketing",industrial:"Industrial",pd:"P&D",capex:"CAPEX"}[grupoDoCC] || grupoDoCC;
+    erros.push(`Classe ADM não pode usar CC de ${nomeGrupo} ("${cc}"). Use um CC Administrativo: Recursos Humanos, Financeiro, TI, Administrativo Geral, Compras, Logistica, etc.`);
+  }
+
+  // Regra P&D: CC P&D só pode ter classes P&D
+  const isClassePD = classeN.includes("p&d") || classeN.includes("pesquisa") || classeN.includes("ensaio") || classeN.includes("analise laboratorial") || classeN.includes("insumos") && classeN.includes("p&d");
+  if (grupoDoCC === "pd" && !isClassePD) {
+    avisos.push(`CC P&D ("${cc}") normalmente é usado somente com classes financeiras de P&D.`);
+  }
+  if (isClassePD && grupoDoCC && grupoDoCC !== "pd" && grupoDoCC !== "diretoria") {
+    avisos.push(`Classe de P&D geralmente requer CC do grupo P&D (P&D ou Gestao P&D).`);
+  }
+
+  // Regra CAPEX: CCs CAPEX só com classes de imobilizado
+  const isClasseCapex = classeN.includes("capex") || classeN.includes("maquinas e equipamento") || classeN.includes("obras civis") || classeN.includes("moveis e utensilios") || classeN.includes("sistemas aplicativos") || classeN.includes("imoveis") || classeN.includes("marcas direitos") || classeN.includes("equipamentos de informatica");
+  if (grupoDoCC === "capex" && !isClasseCapex) {
+    erros.push(`CC CAPEX ("${cc}") só deve ser usado com classes de imobilizado (Máquinas, Obras Civis, TI, Mobiliário, Intangível).`);
+  }
+  if (isClasseCapex && grupoDoCC && grupoDoCC !== "capex" && grupoDoCC !== "diretoria") {
+    avisos.push(`Classe de CAPEX/Imobilizado geralmente requer CC do grupo CAPEX.`);
   }
 
   const div = document.getElementById("res-validar");
