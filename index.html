@@ -610,7 +610,7 @@ const FORNECEDORES_LOCAL = {
   "GRUPO ALPHA": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "SEGURANCA E VIGILANCIA (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Segurança patrimonial" },
   "SEM PARAR": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "COMBUSTIVEIS E LUBRIFICANTES (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Pedágio/tag veículos" },
   "DIGILOQ": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "LOCACAO DE VEICULOS (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "Frota locada" },
-  "MANA REFEICOES": { cc: "MARKETING", ccCod: "MKT", classe: "PROMOCOES E EVENTOS (MKT)", projeto: "por evento", raiz: 5, obs: "Alimentação em eventos" },
+  "MANA REFEICOES": { cc: "CC do departamento solicitante", ccCod: "ADM", classe: "ALIMENTACAO (ADM)", projeto: "CORPORATIVO MATRIZ", raiz: 4, obs: "CC = departamento que solicitou (ex: FINANCEIRO, RH, TI, DIRETORIA, LOGISTICA, COMPRAS, ALMOXARIFADO, PCPM, SUPPLY CHAIN, ADMINISTRATIVO GERAL)" },
   "GIGA SOLUCOES": { cc: "MARKETING", ccCod: "MKT", classe: "AGENCIAS E FREELANCERS (MKT)", projeto: "GIRO NUXCELL I 2026", raiz: 5, obs: "Audiovisual para eventos" },
   "IMPRA GRAFICA": { cc: "Linha PET", ccCod: "PET", classe: "MATERIAIS DE PROPAGANDA (MKT)", projeto: "CORPORATIVO MATRIZ", raiz: 5, obs: "Material gráfico PET" },
   "NB CALDONHO": { cc: "ADMINISTRATIVO GERAL", ccCod: "ADM", classe: "CESTAS E BRINDES (ADM)", projeto: "DIA DAS MAES", raiz: 4, obs: "Cestas/brindes internos" },
@@ -955,7 +955,7 @@ async function validar() {
   }
   // Regra ADM: classe administrativa só pode usar CC administrativo
   const isClasseAdm = classeN.includes("adm") || classeN.includes("administrativo");
-  const CC_ADM_VALIDOS = ["recursos humanos","rh","financeiro","diretoria","presidencia","juridico","ti ","tecnologia da informacao","tecnologia informacao","administrativo geral","administrativo","contabilidade","controladoria","compras","logistica","qualidade","regulatorio","producao","operacoes"];
+  const CC_ADM_VALIDOS = ["recursos humanos","rh","financeiro","diretoria","presidencia","juridico","ti","tecnologia da informacao","tecnologia informacao","administrativo geral","administrativo","contabilidade","controladoria","compras","logistica","qualidade","regulatorio","producao","operacoes","almoxarifado","faturamento","pcpm","supply chain","gestao supply","gestao administrativo","gestao adm","manutencao geral","manutencao"];
   const CC_NAO_ADM = ["gestao comercial","comercial","marketing","linha pet","linha producao","linha agricola","linha ingredientes","equinos","bovinos","suinos","aves","pet","nuxcell","avesyn","biomol","bioagrega"];
   if (isClasseAdm) {
     const ccEhNaoAdm = CC_NAO_ADM.some(kw => ccN.includes(norm(kw)));
