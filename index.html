@@ -827,17 +827,7 @@ function aplicarRegraLinha(linha, regra, descricao) {
 
   // Raiz 5 (MKT) e Raiz 7 (VEN): CC sempre = Linha quando linha selecionada
   if (regra.raiz === 5 || regra.raiz === 7) {
-    // Projeto baseado no tipo de material descrito
-    const d = norm(descricao || "");
-    let projeto = regra.projeto || "CORPORATIVO MATRIZ";
-    if (d.includes("folder"))                           projeto = "FOLDER";
-    else if (d.includes("flyer") || d.includes("flyers")) projeto = "FLYER";
-    else if (d.includes("catalogo") || d.includes("catálogo")) projeto = "CATALOGO";
-    else if (d.includes("banner"))                      projeto = "BANNER";
-    else if (d.includes("display"))                     projeto = "DISPLAY";
-    else if (d.includes("bula"))                        projeto = "BULA";
-    else if (d.includes("embalagem") || d.includes("rotulo") || d.includes("rótulo")) projeto = "EMBALAGEM";
-    return { ...regra, cc: ccLinha, projeto };
+    return { ...regra, cc: ccLinha, projeto: regra.projeto || "CORPORATIVO MATRIZ", obs: (regra.obs ? regra.obs + " | " : "") + "⚠️ Confirme o projeto analítico (10 dígitos) no Gd_Projetos — o projeto deve pertencer à classe " + (regra.classe || "") };
   }
   return regra;
 }
