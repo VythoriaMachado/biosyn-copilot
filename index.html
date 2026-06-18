@@ -978,6 +978,12 @@ async function validar() {
     erros.push(`Classe ADM não pode usar CC de ${nomeGrupo} ("${cc}"). Use um CC Administrativo: Recursos Humanos, Financeiro, TI, Administrativo Geral, Compras, Logistica, etc.`);
   }
 
+  // Regra LINHA: CC de Linha de produto só pode ter classes Comercial ou Marketing
+  const isClasseComercialOuMkt = classeN.includes("mkt") || classeN.includes("marketing") || classeN.includes("ven)") || classeN.includes("vendas") || classeN.includes("feiras") || classeN.includes("brindes") || classeN.includes("patrocinio") || classeN.includes("agencias") || classeN.includes("propaganda") || classeN.includes("materiais impressos") || classeN.includes("materiais de propaganda") || classeN.includes("promocoes") || classeN.includes("plataformas") || classeN.includes("passagens") || classeN.includes("hospedagem") || classeN.includes("fretes s/vendas") || classeN.includes("analises laboratoriais") || classeN.includes("servicos postais");
+  if (grupoDoCC === "comercial" && !isClasseComercialOuMkt) {
+    erros.push(`CC de Linha ("${cc}") só pode ser usado com classes Comercial ou Marketing. Lançamentos de Linha são sempre do grupo Comercial/Marketing.`);
+  }
+
   // Regra P&D: CC P&D só pode ter classes P&D
   const isClassePD = classeN.includes("p&d") || classeN.includes("pesquisa") || classeN.includes("ensaio") || classeN.includes("analise laboratorial") || classeN.includes("insumos") && classeN.includes("p&d");
   if (grupoDoCC === "pd" && !isClassePD) {
