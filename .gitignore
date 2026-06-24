@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.xlsm
+*.xlsx
+config_local.txt
+cronograma.db
+auth_config.json
+token_cache.json
+*.bat
+demo.html
+serve.ps1
+test_ics.py

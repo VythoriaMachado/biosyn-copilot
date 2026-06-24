@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cronograma — BioSyn</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ONBOARDING OVERLAY -->
+<div id="onboardingOverlay" class="onboarding-overlay" style="display:none">
+  <div class="onboarding-box">
+    <div class="onboarding-logo">
+      <div class="brand-logo" style="width:56px;height:56px;font-size:24px">B</div>
+    </div>
+    <h1 class="onboarding-title">BioSyn Cronograma</h1>
+    <p class="onboarding-sub">Configure seu perfil para começar. Você só precisará fazer isso uma vez.</p>
+
+    <div class="onboarding-field">
+      <label><i class="fa-solid fa-user"></i> Seu nome</label>
+      <input type="text" id="onbName" placeholder="Ex: João Silva" class="form-input" autocomplete="name">
+    </div>
+
+    <div class="onboarding-field">
+      <label><i class="fa-solid fa-calendar"></i> Link ICS do seu Outlook</label>
+      <input type="url" id="onbIcs" placeholder="https://outlook.office365.com/owa/calendar/..." class="form-input">
+      <div class="onboarding-hint">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>Como obter: <b>Outlook Web</b> → Calendário → Configurações (⚙) → Ver todas as configurações → <b>Calendários compartilhados</b> → Publicar calendário → copiar o link <b>ICS</b></span>
+      </div>
+    </div>
+
+    <button class="btn-primary onboarding-btn" onclick="UserProfile.save()">
+      <i class="fa-solid fa-arrow-right"></i> Entrar no sistema
+    </button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">B</div>
+    <div class="brand-text">
+      <span class="brand-name">BioSyn</span>
+      <span class="brand-sub">Cronograma</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item active" data-view="dashboard">
+      <i class="fa-solid fa-house"></i><span>Dashboard</span>
+    </a>
+    <a href="#" class="nav-item" data-view="checklist">
+      <i class="fa-solid fa-list-check"></i><span>Checklist Diário</span>
+    </a>
+    <a href="#" class="nav-item" data-view="planning">
+      <i class="fa-solid fa-calendar-days"></i><span>Planejamento</span>
+    </a>
+    <a href="#" class="nav-item" data-view="weekly">
+      <i class="fa-solid fa-chart-bar"></i><span>Dashboard Semanal</span>
+    </a>
+    <a href="#" class="nav-item" data-view="managerial">
+      <i class="fa-solid fa-chart-line"></i><span>Painel Gerencial</span>
+    </a>
+    <a href="#" class="nav-item" data-view="insights">
+      <i class="fa-solid fa-lightbulb"></i><span>Insights IA</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-info" id="sidebarUserInfo" style="cursor:pointer" onclick="UserProfile.showEdit()" title="Alterar perfil">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div>
+        <div class="user-name" id="sidebarName">Carregando...</div>
+        <div class="user-role">BioSyn <i class="fa-solid fa-pen" style="font-size:9px;opacity:.5"></i></div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main-content">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="btn-icon" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+      <div class="topbar-title" id="viewTitle">Dashboard do Dia</div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-date" id="topbarDate"></div>
+      <button class="btn-export" id="btnExportWeekly" style="display:none">
+        <i class="fa-solid fa-download"></i> Exportar Dashboard
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VIEW: DASHBOARD
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="view active" id="view-dashboard">
+    <div class="page-hero">
+      <div>
+        <h2 id="dashDate">Carregando...</h2>
+        <p id="dashDay" style="opacity:.7;font-size:14px"></p>
+      </div>
+      <button class="btn-primary" onclick="App.loadChecklist()">
+        <i class="fa-solid fa-play"></i> Iniciar Checklist
+      </button>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card" id="sc-atividades">
+        <div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-tasks" style="color:#099CD6"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Atividades</div>
+          <div class="stat-value" id="sc-ativ-val">—</div>
+        </div>
+      </div>
+      <div class="stat-card" id="sc-reunioes">
+        <div class="stat-icon" style="background:#FFF3E0"><i class="fa-solid fa-people-group" style="color:#F4A900"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Reuniões</div>
+          <div class="stat-value" id="sc-reun-val">—</div>
+        </div>
+      </div>
+      <div class="stat-card" id="sc-horas">
+        <div class="stat-icon" style="background:#E8F5E9"><i class="fa-solid fa-clock" style="color:#1DB954"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Horas Planejadas</div>
+          <div class="stat-value" id="sc-horas-val">—</div>
+        </div>
+      </div>
+      <div class="stat-card" id="sc-livres">
+        <div class="stat-icon" style="background:#F3E5F5"><i class="fa-solid fa-hourglass-half" style="color:#9C27B0"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Horas Livres</div>
+          <div class="stat-value" id="sc-livres-val">—</div>
+        </div>
+      </div>
+      <div class="stat-card" id="sc-pend">
+        <div class="stat-icon" style="background:#FDECEA"><i class="fa-solid fa-triangle-exclamation" style="color:#E53935"></i></div>
+        <div class="stat-body">
+          <div class="stat-label">Pendências</div>
+          <div class="stat-value" id="sc-pend-val">—</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="section-title"><i class="fa-solid fa-calendar-day"></i> Atividades de Hoje</h3>
+    <div id="activitiesList" class="activities-list">
+      <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando agenda...</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VIEW: CHECKLIST
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="view" id="view-checklist">
+    <!-- Progress bar -->
+    <div class="checklist-progress-wrap">
+      <div class="checklist-progress-bar">
+        <div class="checklist-progress-fill" id="progressFill"></div>
+      </div>
+      <div class="checklist-progress-text" id="progressText">0 / 0</div>
+    </div>
+
+    <!-- Activity card (one at a time) -->
+    <div class="checklist-card" id="checklistCard" style="display:none">
+      <div class="activity-header">
+        <div class="activity-origin-badge" id="actOriginBadge"></div>
+        <div class="activity-timing">
+          <i class="fa-solid fa-clock"></i>
+          <span id="actTiming"></span>
+          <span class="dot">•</span>
+          <span id="actDuration"></span> min previstos
+        </div>
+      </div>
+      <h2 class="activity-title" id="actTitle"></h2>
+      <p class="activity-desc" id="actDesc"></p>
+      <div class="activity-meta" id="actMeta"></div>
+
+      <div class="form-sections" id="formSections"></div>
+
+      <div class="checklist-nav">
+        <button class="btn-secondary" id="btnPrev" onclick="Checklist.prev()">
+          <i class="fa-solid fa-arrow-left"></i> Anterior
+        </button>
+        <button class="btn-primary" id="btnNext" onclick="Checklist.next()">
+          Próxima <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Demandas do Dia -->
+    <div class="checklist-demandas" id="checklistDemandas" style="display:none">
+      <div class="demandas-header">
+        <i class="fa-solid fa-bell"></i>
+        <h2>Demandas Recebidas no Dia</h2>
+        <p>Você recebeu alguma demanda solicitada que não estava no calendário?</p>
+      </div>
+      <div id="demandasList"></div>
+      <div id="demandasForm"></div>
+      <div class="demandas-actions">
+        <button class="btn-secondary" id="btnAddDemanda" onclick="Checklist.addDemanda()">
+          <i class="fa-solid fa-plus"></i> Adicionar Demanda
+        </button>
+        <button class="btn-primary" id="btnDemandasNext" onclick="Checklist.finishDemandas()">
+          Ver Resumo <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary before save -->
+    <div class="checklist-summary" id="checklistSummary" style="display:none">
+      <div class="summary-header">
+        <i class="fa-solid fa-clipboard-check"></i>
+        <h2>Resumo do Checklist</h2>
+        <p>Revise suas respostas antes de salvar.</p>
+      </div>
+      <div id="summaryContent"></div>
+      <div class="summary-actions">
+        <button class="btn-secondary" onclick="Checklist.goToActivity(0)">
+          <i class="fa-solid fa-pen"></i> Revisar
+        </button>
+        <button class="btn-primary btn-save" onclick="Checklist.save()">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar Checklist
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="checklistEmpty" style="display:none">
+      <i class="fa-solid fa-inbox"></i>
+      <h3>Nenhuma atividade encontrada</h3>
+      <p>Não há atividades registradas para hoje.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VIEW: PLANNING
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="view" id="view-planning">
+    <div class="page-hero">
+      <div>
+        <h2>Planejamento do Próximo Dia</h2>
+        <p style="opacity:.7;font-size:14px">Proposta gerada automaticamente com base no histórico e Outlook</p>
+      </div>
+      <button class="btn-primary" onclick="Planning.load()">
+        <i class="fa-solid fa-rotate"></i> Atualizar Proposta
+      </button>
+    </div>
+    <div id="planningContent">
+      <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Gerando proposta...</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VIEW: WEEKLY DASHBOARD
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="view" id="view-weekly">
+    <div class="page-hero">
+      <div>
+        <h2>Dashboard Semanal</h2>
+        <p style="opacity:.7;font-size:14px">Resumo de produtividade da semana atual</p>
+      </div>
+      <button class="btn-primary" onclick="Weekly.export()">
+        <i class="fa-solid fa-download"></i> Exportar HTML
+      </button>
+    </div>
+    <div id="weeklyStats" class="stats-grid"></div>
+    <div class="charts-grid" id="weeklyCharts"></div>
+    <div id="weeklyInsights"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VIEW: MANAGERIAL
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="view" id="view-managerial">
+    <div class="page-hero">
+      <div>
+        <h2>Painel Gerencial</h2>
+        <p style="opacity:.7;font-size:14px">Análise consolidada de produtividade</p>
+      </div>
+      <div class="period-tabs">
+        <button class="period-tab active" data-period="month" onclick="Managerial.setPeriod('month',this)">30 dias</button>
+        <button class="period-tab" data-period="quarter" onclick="Managerial.setPeriod('quarter',this)">90 dias</button>
+        <button class="period-tab" data-period="year" onclick="Managerial.setPeriod('year',this)">1 ano</button>
+      </div>
+    </div>
+    <div id="managerialContent">
+      <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando dados...</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VIEW: INSIGHTS
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="view" id="view-insights">
+    <div class="page-hero">
+      <div>
+        <h2>Insights de IA</h2>
+        <p style="opacity:.7;font-size:14px">Análise inteligente do seu histórico de produtividade</p>
+      </div>
+      <div class="period-tabs">
+        <button class="period-tab active" data-days="30" onclick="InsightsView.load(30,this)">30 dias</button>
+        <button class="period-tab" data-days="60" onclick="InsightsView.load(60,this)">60 dias</button>
+        <button class="period-tab" data-days="90" onclick="InsightsView.load(90,this)">90 dias</button>
+      </div>
+    </div>
+    <div id="insightsContent">
+      <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Analisando histórico...</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
