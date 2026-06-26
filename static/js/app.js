@@ -163,7 +163,9 @@ const Checklist = {
   current: 0,
   answers: [],
   demandas: [],
-  editingDemanda: null,  // índice da demanda sendo editada, ou null
+  editingDemanda: null,
+  checklistDate: null,
+  checklistDiaSemana: null,
 
   _hideAll() {
     $('checklistCard').style.display = 'none';
@@ -180,13 +182,40 @@ const Checklist = {
     this._hideAll();
 
     try {
-      const data = await API('/api/today');
+      const data = await API('/api/today?checklist=1');
+      this.checklistDate = data.data;
+      this.checklistDiaSemana = data.dia_semana;
       this.activities = data.atividades || [];
+      const respostas = data.respostas_salvas || {};
+
+      // Exibir banner com a data do checklist
+      if (this.checklistDate) {
+        const jaPreench = data.ja_preenchido ? ' <span style="color:#1DB954;font-size:11px">(respostas carregadas)</span>' : '';
+        $('checklistDateLabel').innerHTML = `${this.checklistDate} — ${this.checklistDiaSemana}${jaPreench}`;
+        $('checklistDateBanner').style.display = 'block';
+      }
+
       if (this.activities.length === 0) {
         $('checklistEmpty').style.display = 'block';
         return;
       }
-      this.answers = this.activities.map(() => ({}));
+
+      // Pré-preencher respostas já salvas no Excel
+      this.answers = this.activities.map(a => {
+        const key = (a.titulo || '').trim().toLowerCase();
+        const saved = respostas[key];
+        if (saved && saved.status) {
+          return {
+            status:             saved.status,
+            houve_atraso:       saved.houve_atraso || 'Não',
+            motivo_atraso:      saved.motivo_atraso || '',
+            solicitante_extra:  saved.solicitante_extra || '',
+            observacoes:        saved.observacoes || '',
+          };
+        }
+        return {};
+      });
+
       this.goToActivity(0);
     } catch(e) {
       $('checklistEmpty').style.display = 'block';
@@ -560,10 +589,9 @@ const Checklist = {
   },
 
   async save() {
-    const today = new Date();
+    const todayStr = this.checklistDate || new Date().toLocaleDateString('pt-BR');
     const days = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-    const todayStr = today.toLocaleDateString('pt-BR');
-    const diaSemana = days[today.getDay()];
+    const diaSemana = this.checklistDiaSemana || days[new Date().getDay()];
 
     const entries = this.activities.map((a, i) => {
       const ans = this.answers[i];

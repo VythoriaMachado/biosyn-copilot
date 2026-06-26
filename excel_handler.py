@@ -3,18 +3,69 @@ import shutil
 from datetime import datetime, date, timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
 import pandas as pd
-from config import EXCEL_PATH, SHEET_CHECKLIST, EXCEL_HEADERS
+from config import EXCEL_PATH, SHEET_CHECKLIST
+
+# ── Estrutura real do Excel ────────────────────────────────────────────────
+# Col 0: Data           | Col 1: Dia          | Col 2: Responsável
+# Col 3: Ordem          | Col 4: Horário Plan. | Col 5: Atividade
+# Col 6: Duração (min)  | Col 7: Status        | Col 8: ◀ CAPA (ignorar)
+# Col 9: Tempo Restante | Col 10: Ativ. Alt.   | Col 11: Solicitante/Setor
+# Col 12: Motivo        | Col 13: Prioridade   | Col 14: Reuniões
+# Col 15: Ev. Extra.    | Col 16: Observações  | Col 17: Preenchido Atraso
+# Col 18: Registrado em
 
 
-def _backup_excel():
-    if os.path.exists(EXCEL_PATH):
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = os.path.dirname(EXCEL_PATH)
-        backup_name = f"Cronograma_Tarefas_Financeiro_BACKUP_{ts}.xlsm"
-        backup_path = os.path.join(backup_dir, backup_name)
-        shutil.copy2(EXCEL_PATH, backup_path)
+def _normalize_date(val):
+    """Converte qualquer formato de data para DD/MM/YYYY."""
+    if val is None:
+        return ""
+    if isinstance(val, (datetime, date)):
+        return val.strftime("%d/%m/%Y")
+    s = str(val).strip()
+    # ISO: 2026-04-27
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(s[:10], fmt).strftime("%d/%m/%Y")
+        except Exception:
+            continue
+    return s
+
+
+def _parse_horario(h):
+    """Extrai inicio e fim de '08:00-10:00'."""
+    if not h:
+        return "", ""
+    h = str(h).strip()
+    if "-" in h:
+        parts = h.split("-")
+        return parts[0].strip(), parts[1].strip()
+    return h, ""
+
+
+def _row_to_record(row):
+    """Converte tupla do Excel para dicionário normalizado."""
+    inicio, fim = _parse_horario(row[4] if len(row) > 4 else "")
+    return {
+        "data":               _normalize_date(row[0] if len(row) > 0 else None),
+        "dia_semana":         str(row[1]) if len(row) > 1 and row[1] else "",
+        "responsavel":        str(row[2]) if len(row) > 2 and row[2] else "",
+        "horario_inicio":     inicio,
+        "horario_fim":        fim,
+        "titulo":             str(row[5]) if len(row) > 5 and row[5] else "",
+        "tempo_previsto":     int(row[6]) if len(row) > 6 and row[6] and str(row[6]).isdigit() else 60,
+        "status":             str(row[7]) if len(row) > 7 and row[7] else "",
+        "tempo_executado":    str(row[9])  if len(row) > 9  and row[9]  else "",
+        "nome_atividade_extra": str(row[10]) if len(row) > 10 and row[10] else "",
+        "solicitante_extra":  str(row[11]) if len(row) > 11 and row[11] else "",
+        "motivo_atraso":      str(row[12]) if len(row) > 12 and row[12] else "",
+        "prioridade":         str(row[13]) if len(row) > 13 and row[13] else "Média",
+        "observacoes":        str(row[16]) if len(row) > 16 and row[16] else "",
+        "houve_atraso":       str(row[17]) if len(row) > 17 and row[17] else "Não",
+        "timestamp_registro": str(row[18]) if len(row) > 18 and row[18] else "",
+        "origem":             "Excel",
+        "descricao":          "",
+    }
 
 
 def _load_workbook():
@@ -24,14 +75,6 @@ def _load_workbook():
 
 
 def _ensure_sheet(wb):
-    if SHEET_CHECKLIST not in wb.sheetnames:
-        ws = wb.create_sheet(SHEET_CHECKLIST)
-        for col, header in enumerate(EXCEL_HEADERS, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.font = Font(bold=True, color="FFFFFF", name="Calibri")
-            cell.fill = PatternFill("solid", start_color="002468")
-            cell.alignment = Alignment(horizontal="center")
-        ws.freeze_panes = "A2"
     return wb[SHEET_CHECKLIST]
 
 
@@ -42,26 +85,17 @@ def get_today_activities(usuario=None):
         today_str = date.today().strftime("%d/%m/%Y")
         activities = []
         for row in ws.iter_rows(min_row=2, values_only=True):
-            if not (row[0] and str(row[0]).startswith(today_str[:10])):
+            if not row[0]:
                 continue
-            if usuario and row[7] and str(row[7]).strip().lower() != usuario.strip().lower():
+            if _normalize_date(row[0]) != today_str:
                 continue
-            if True:
-                activities.append({
-                    "data": str(row[0]) if row[0] else "",
-                    "titulo": str(row[2]) if row[2] else "",
-                    "horario_inicio": str(row[3]) if row[3] else "",
-                    "horario_fim": str(row[4]) if row[4] else "",
-                    "tempo_previsto": int(row[5]) if row[5] else 60,
-                    "descricao": str(row[6]) if row[6] else "",
-                    "responsavel": str(row[7]) if row[7] else "Vythoria",
-                    "origem": str(row[8]) if row[8] else "Manual",
-                    "status": str(row[9]) if row[9] else "",
-                    "prioridade": str(row[14]) if row[14] else "Média",
-                })
+            rec = _row_to_record(row)
+            if usuario and rec["responsavel"].strip().lower() != usuario.strip().lower():
+                continue
+            activities.append(rec)
         wb.close()
         return activities
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -71,8 +105,8 @@ def get_all_data():
         ws = _ensure_sheet(wb)
         data = []
         for row in ws.iter_rows(min_row=2, values_only=True):
-            if row[0]:
-                data.append(dict(zip(EXCEL_HEADERS, row)))
+            if row[0] and row[5]:  # precisa ter data e atividade
+                data.append(_row_to_record(row))
         wb.close()
         return data
     except Exception:
@@ -85,41 +119,65 @@ def save_checklist(entries):
         ws = _ensure_sheet(wb)
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
+        # Descobrir próxima ordem do dia
+        today_str = date.today().strftime("%d/%m/%Y")
+        ordem = 1
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row[0] and _normalize_date(row[0]) == today_str:
+                ordem += 1
+
         for entry in entries:
+            inicio = entry.get("horario_inicio", "")
+            fim    = entry.get("horario_fim", "")
+            horario = f"{inicio}-{fim}" if inicio and fim else inicio
+
+            solicitante = entry.get("solicitante_extra", "")
+            categoria   = entry.get("categoria_extra", "")
+            sol_setor   = f"{solicitante} / {categoria}" if solicitante and categoria else (solicitante or categoria)
+
+            obs_parts = []
+            if entry.get("houve_atraso") == "Sim":
+                obs_parts.append(f"Atraso: {entry.get('motivo_atraso','')}")
+            if entry.get("reagendado") == "Sim":
+                obs_parts.append("Reagendado")
+            if entry.get("atividade_extra") == "Sim":
+                obs_parts.append(f"Extra: {entry.get('nome_atividade_extra','')}")
+            if entry.get("tempo_executado"):
+                obs_parts.append(f"Tempo: {entry.get('tempo_executado')}")
+
             next_row = ws.max_row + 1
+            # Escrever na mesma estrutura do Excel original (19 colunas)
             values = [
-                entry.get("data", date.today().strftime("%d/%m/%Y")),
-                entry.get("dia_semana", _get_weekday()),
-                entry.get("titulo", ""),
-                entry.get("horario_inicio", ""),
-                entry.get("horario_fim", ""),
-                entry.get("tempo_previsto", 60),
-                entry.get("descricao", ""),
-                entry.get("responsavel", "Vythoria"),
-                entry.get("origem", "Manual"),
-                entry.get("status", ""),
-                entry.get("tempo_executado", ""),
-                entry.get("houve_atraso", "Não"),
-                entry.get("motivo_atraso", ""),
-                entry.get("reagendado", "Não"),
-                entry.get("prioridade", "Média"),
-                entry.get("atividade_extra", "Não"),
-                entry.get("categoria_extra", ""),
-                entry.get("nome_atividade_extra", ""),
-                entry.get("tempo_extra", ""),
-                entry.get("solicitante_extra", ""),
-                entry.get("observacoes", ""),
-                timestamp,
+                today_str,                                # Col 0: Data
+                entry.get("dia_semana", _get_weekday()),  # Col 1: Dia
+                entry.get("responsavel", ""),             # Col 2: Responsável
+                ordem,                                    # Col 3: Ordem
+                horario,                                  # Col 4: Horário Planejado
+                entry.get("titulo", ""),                  # Col 5: Atividade
+                entry.get("tempo_previsto", 60),          # Col 6: Duração (min)
+                entry.get("status", ""),                  # Col 7: Status
+                None,                                     # Col 8: ◀ CAPA (vazio)
+                entry.get("tempo_extra", ""),             # Col 9: Tempo Restante
+                entry.get("nome_atividade_extra", ""),    # Col 10: Ativ. Alternativa
+                sol_setor,                                # Col 11: Solicitante/Setor
+                entry.get("motivo_atraso", ""),           # Col 12: Motivo
+                entry.get("prioridade", "Média"),         # Col 13: Prioridade
+                "",                                       # Col 14: Reuniões
+                entry.get("origem", ""),                  # Col 15: Evento Extra
+                " | ".join(obs_parts),                    # Col 16: Observações
+                entry.get("houve_atraso", "Não"),         # Col 17: Preenchido Atraso
+                timestamp,                                # Col 18: Registrado em
             ]
+
             for col, val in enumerate(values, 1):
                 cell = ws.cell(row=next_row, column=col, value=val)
                 cell.font = Font(name="Calibri", size=10)
                 if next_row % 2 == 0:
                     cell.fill = PatternFill("solid", start_color="EBF5FB")
-                cell.border = Border(
-                    bottom=Side(style="thin", color="DDDDDD")
-                )
+                cell.border = Border(bottom=Side(style="thin", color="DDDDDD"))
                 cell.alignment = Alignment(wrap_text=False)
+
+            ordem += 1
 
         wb.save(EXCEL_PATH)
         wb.close()
@@ -132,15 +190,15 @@ def get_weekly_data(reference_date=None):
     if reference_date is None:
         reference_date = date.today()
     start = reference_date - timedelta(days=reference_date.weekday())
-    end = start + timedelta(days=4)
+    end   = start + timedelta(days=4)
 
     try:
-        df = pd.DataFrame(get_all_data())
+        records = get_all_data()
+        df = pd.DataFrame(records)
         if df.empty:
             return _empty_weekly()
-        df["Data_dt"] = pd.to_datetime(df["Data"], format="%d/%m/%Y", errors="coerce")
-        mask = (df["Data_dt"].dt.date >= start) & (df["Data_dt"].dt.date <= end)
-        week_df = df[mask].copy()
+        df["Data_dt"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
+        week_df = df[(df["Data_dt"].dt.date >= start) & (df["Data_dt"].dt.date <= end)].copy()
         if week_df.empty:
             return _empty_weekly()
         return _compute_weekly_stats(week_df)
@@ -150,10 +208,11 @@ def get_weekly_data(reference_date=None):
 
 def get_historical_data(days=90):
     try:
-        df = pd.DataFrame(get_all_data())
+        records = get_all_data()
+        df = pd.DataFrame(records)
         if df.empty:
             return pd.DataFrame()
-        df["Data_dt"] = pd.to_datetime(df["Data"], format="%d/%m/%Y", errors="coerce")
+        df["Data_dt"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
         cutoff = date.today() - timedelta(days=days)
         return df[df["Data_dt"].dt.date >= cutoff]
     except Exception:
@@ -161,62 +220,33 @@ def get_historical_data(days=90):
 
 
 def _compute_weekly_stats(df):
-    def parse_time(t):
-        mapping = {
-            "Menos de 15 minutos": 10,
-            "15–30 minutos": 22,
-            "30–60 minutos": 45,
-            "Igual ao planejado": None,
-            "Acima do planejado": None,
-        }
-        if t in mapping:
-            v = mapping[t]
-            return v if v else 60
-        try:
-            return int(t)
-        except Exception:
-            return 60
-
-    total = len(df)
-    concluidas = len(df[df["Status"] == "Concluído"])
-    parciais = len(df[df["Status"] == "Parcial"])
-    nao_realizadas = len(df[df["Status"] == "Não realizado"])
-    reunioes = len(df[df["Titulo"].str.contains("reunião|meeting|call", case=False, na=False)])
-    horas_previstas = df["Tempo Previsto (min)"].apply(lambda x: int(x) if str(x).isdigit() else 60).sum() / 60
-    horas_executadas = df["Tempo Executado"].apply(parse_time).sum() / 60
-    extras = df[df["Atividade Extra"] == "Sim"]
-    horas_extras = extras["Tempo Extra (min)"].apply(lambda x: int(x) if str(x).isdigit() else 0).sum() / 60
-    taxa_conclusao = round((concluidas / total) * 100, 1) if total > 0 else 0
-    taxa_produtividade = round((horas_executadas / horas_previstas) * 100, 1) if horas_previstas > 0 else 0
+    total        = len(df)
+    concluidas   = len(df[df["status"] == "Concluído"])
+    parciais     = len(df[df["status"] == "Parcial"])
+    nao_real     = len(df[df["status"] == "Não realizado"])
+    reunioes     = len(df[df["titulo"].str.contains("reunião|meeting|call", case=False, na=False)])
+    horas_prev   = df["tempo_previsto"].apply(lambda x: int(x) if str(x).isdigit() else 60).sum() / 60
+    taxa_concl   = round((concluidas / total) * 100, 1) if total > 0 else 0
 
     by_day = {}
     for _, row in df.iterrows():
-        day = str(row.get("Dia Semana", ""))
+        day = str(row.get("dia_semana", ""))
         if day not in by_day:
             by_day[day] = {"concluidas": 0, "total": 0}
         by_day[day]["total"] += 1
-        if row.get("Status") == "Concluído":
+        if row.get("status") == "Concluído":
             by_day[day]["concluidas"] += 1
 
-    motivos = df[df["Motivo Atraso"] != ""]["Motivo Atraso"].value_counts().to_dict()
-    categorias_extras = extras["Categoria Extra"].value_counts().to_dict()
+    motivos = df[df["motivo_atraso"] != ""]["motivo_atraso"].value_counts().to_dict() if "motivo_atraso" in df else {}
 
     return {
-        "total": total,
-        "concluidas": concluidas,
-        "parciais": parciais,
-        "nao_realizadas": nao_realizadas,
-        "reunioes": reunioes,
-        "horas_previstas": round(horas_previstas, 1),
-        "horas_executadas": round(horas_executadas, 1),
-        "horas_extras": round(horas_extras, 1),
-        "horas_pendentes": round(horas_previstas - horas_executadas, 1),
-        "taxa_conclusao": taxa_conclusao,
-        "taxa_produtividade": taxa_produtividade,
-        "by_day": by_day,
-        "motivos_atraso": motivos,
-        "categorias_extras": categorias_extras,
-        "atividades_detail": df[["Titulo", "Status", "Tempo Previsto (min)", "Tempo Executado", "Dia Semana"]].to_dict("records"),
+        "total": total, "concluidas": concluidas, "parciais": parciais,
+        "nao_realizadas": nao_real, "reunioes": reunioes,
+        "horas_previstas": round(horas_prev, 1), "horas_executadas": 0,
+        "horas_extras": 0, "horas_pendentes": 0,
+        "taxa_conclusao": taxa_concl, "taxa_produtividade": 0,
+        "by_day": by_day, "motivos_atraso": motivos, "categorias_extras": {},
+        "atividades_detail": df[["titulo","status","tempo_previsto","dia_semana"]].to_dict("records"),
     }
 
 
@@ -236,120 +266,70 @@ def get_managerial_data(period="month"):
     if df.empty:
         return {}
 
-    total = len(df)
-    concluidas = len(df[df["Status"] == "Concluído"])
-    taxa = round((concluidas / total) * 100, 1) if total > 0 else 0
+    total      = len(df)
+    concluidas = len(df[df["status"] == "Concluído"])
+    taxa       = round((concluidas / total) * 100, 1) if total > 0 else 0
+    reunioes   = len(df[df["titulo"].str.contains("reunião|meeting|call", case=False, na=False)])
 
-    by_cat = {}
-    extras = df[df["Atividade Extra"] == "Sim"]
-    for _, row in extras.iterrows():
-        cat = str(row.get("Categoria Extra", "Outro"))
-        if cat not in by_cat:
-            by_cat[cat] = 0
-        by_cat[cat] += 1
-
-    heatmap_days = {d: 0 for d in ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]}
+    heatmap = {d: 0 for d in ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira"]}
     for _, row in df.iterrows():
-        day = str(row.get("Dia Semana", ""))
-        if day in heatmap_days:
-            heatmap_days[day] += 1
+        day = str(row.get("dia_semana", ""))
+        if day in heatmap:
+            heatmap[day] += 1
 
-    top_activities = df.groupby("Titulo").size().sort_values(ascending=False).head(10).to_dict()
-    motivos = df[df["Motivo Atraso"].notna() & (df["Motivo Atraso"] != "")]["Motivo Atraso"].value_counts().head(10).to_dict()
-
-    reunioes = len(df[df["Titulo"].str.contains("reunião|meeting|call", case=False, na=False)])
-    extras_total = len(extras)
+    top_activities = df.groupby("titulo").size().sort_values(ascending=False).head(10).to_dict()
+    motivos = {}
+    if "motivo_atraso" in df:
+        motivos = df[df["motivo_atraso"].notna() & (df["motivo_atraso"] != "")]["motivo_atraso"].value_counts().head(10).to_dict()
 
     return {
-        "period": period,
-        "total_atividades": total,
-        "concluidas": concluidas,
-        "taxa_conclusao": taxa,
-        "reunioes": reunioes,
-        "extras_total": extras_total,
-        "by_categoria": by_cat,
-        "heatmap_days": heatmap_days,
-        "top_activities": top_activities,
-        "motivos_atraso": motivos,
+        "period": period, "total_atividades": total,
+        "concluidas": concluidas, "taxa_conclusao": taxa,
+        "reunioes": reunioes, "extras_total": 0,
+        "by_categoria": {}, "heatmap_days": heatmap,
+        "top_activities": top_activities, "motivos_atraso": motivos,
     }
 
 
 def propose_next_day_schedule(outlook_events=None):
-    today = date.today()
+    today    = date.today()
     next_day = today + timedelta(days=1)
     if next_day.weekday() >= 5:
         next_day = today + timedelta(days=(7 - today.weekday()))
 
-    df = pd.DataFrame(get_all_data())
-    pending = []
-    if not df.empty:
-        df["Data_dt"] = pd.to_datetime(df["Data"], format="%d/%m/%Y", errors="coerce")
-        today_df = df[df["Data_dt"].dt.date == today]
-        pending = today_df[today_df["Status"].isin(["Parcial", "Não realizado"])][
-            ["Titulo", "Descricao", "Tempo Previsto (min)", "Prioridade"]
-        ].to_dict("records")
-
     schedule = []
-    current_time = 8 * 60
-    lunch_start = 12 * 60
-    lunch_end = 13 * 60
-    end_of_day = 18 * 60
-
     if outlook_events:
         for ev in outlook_events:
             schedule.append({
-                "titulo": ev.get("titulo", "Reunião"),
-                "horario_inicio": _mins_to_time(ev.get("inicio", current_time)),
-                "horario_fim": _mins_to_time(ev.get("fim", current_time + 60)),
+                "titulo":         ev.get("titulo", "Evento"),
+                "horario_inicio": _mins_to_time(ev.get("inicio", 8*60)),
+                "horario_fim":    _mins_to_time(ev.get("fim", 9*60)),
                 "tempo_previsto": ev.get("duracao", 60),
-                "origem": "Outlook",
-                "prioridade": "Alta",
-                "tipo": "reuniao",
+                "origem":         "Outlook",
+                "prioridade":     "Alta",
+                "tipo":           "evento",
             })
 
-    for item in sorted(pending, key=lambda x: 0 if x.get("Prioridade") == "Alta" else 1):
-        if current_time >= lunch_start:
-            current_time = lunch_end
-        duracao = int(item.get("Tempo Previsto (min)", 60))
-        if current_time + duracao <= end_of_day:
-            schedule.append({
-                "titulo": f"[Pendência] {item.get('Titulo', '')}",
-                "horario_inicio": _mins_to_time(current_time),
-                "horario_fim": _mins_to_time(current_time + duracao),
-                "tempo_previsto": duracao,
-                "origem": "Reagendado",
-                "prioridade": item.get("Prioridade", "Média"),
-                "tipo": "pendencia",
-            })
-            current_time += duracao + 15
-
-    used_mins = sum(s["tempo_previsto"] for s in schedule)
-    available = end_of_day - 8 * 60 - 60
-    backlog = max(0, used_mins - available)
+    used = sum(s["tempo_previsto"] for s in schedule)
+    available = 10 * 60  # 8h úteis em minutos
 
     return {
-        "data": next_day.strftime("%d/%m/%Y"),
-        "dia_semana": _get_weekday(next_day),
-        "schedule": schedule,
+        "data":              next_day.strftime("%d/%m/%Y"),
+        "dia_semana":        _get_weekday(next_day),
+        "schedule":          schedule,
         "horas_disponiveis": round(available / 60, 1),
-        "horas_planejadas": round(used_mins / 60, 1),
-        "backlog_min": backlog,
-        "ocupacao_pct": round((used_mins / available) * 100, 1) if available > 0 else 0,
+        "horas_planejadas":  round(used / 60, 1),
+        "backlog_min":       max(0, used - available),
+        "ocupacao_pct":      round((used / available) * 100, 1) if available > 0 else 0,
     }
 
 
-def apply_schedule(schedule_data):
-    pass
-
-
 def _mins_to_time(mins):
-    h = mins // 60
-    m = mins % 60
-    return f"{h:02d}:{m:02d}"
+    return f"{mins//60:02d}:{mins%60:02d}"
 
 
 def _get_weekday(d=None):
     if d is None:
         d = date.today()
-    days = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
+    days = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado","Domingo"]
     return days[d.weekday()]

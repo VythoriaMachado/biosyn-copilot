@@ -17,7 +17,7 @@ else:
         get_weekly_data, get_managerial_data, propose_next_day_schedule,
         _get_weekday,
     )
-from outlook_handler import get_today_outlook_events, get_next_day_events, is_authenticated
+from outlook_handler import get_today_outlook_events, get_next_day_events, is_authenticated, _fetch_events as _fetch_full_events
 from insights import generate_insights
 from dashboard_generator import generate_weekly_html
 
@@ -33,11 +33,24 @@ def index():
 
 @app.route("/api/today")
 def api_today():
-    today = date.today()
+    # Checklist usa sempre o dia anterior; dashboard usa hoje
+    is_checklist = request.args.get("checklist") == "1"
     ics_url = request.args.get("ics_url") or None
     usuario = request.args.get("usuario") or "Usuário"
 
-    all_activities = get_today_outlook_events(ics_url=ics_url)
+    target = date.today() - timedelta(days=1) if is_checklist else date.today()
+
+    # Pular fins de semana no checklist (sexta → segunda anterior não faz sentido)
+    if is_checklist and target.weekday() >= 5:
+        # Voltar para sexta-feira anterior
+        target = target - timedelta(days=target.weekday() - 4)
+
+    all_activities = get_next_day_events(target_date=target, ics_url=ics_url) if is_checklist else get_today_outlook_events(ics_url=ics_url)
+
+    if is_checklist:
+        # get_next_day_events retorna formato resumido; expandir para formato completo
+        all_activities = _fetch_full_events(target, ics_url)
+
     all_activities.sort(key=lambda x: x.get("horario_inicio", "00:00"))
     for a in all_activities:
         a["responsavel"] = usuario
@@ -46,21 +59,52 @@ def api_today():
     reunioes = [a for a in all_activities if a.get("tipo") == "reuniao" or
                 any(w in a.get("titulo", "").lower() for w in ["reunião", "meeting", "call", "sync", "alinhamento"])]
 
-    excel_hoje = get_today_activities(usuario=usuario)
+    # Buscar registros já salvos no Excel para o dia alvo
+    from excel_handler import get_all_data
+    target_str = target.strftime("%d/%m/%Y")
+    all_records = get_all_data()
+    excel_dia = [r for r in all_records if r.get("data", "") == target_str]
+
+    # Para o dashboard: pendências são do dia de hoje
+    excel_hoje = [r for r in all_records if r.get("data", "") == date.today().strftime("%d/%m/%Y")]
     pendencias = [a for a in excel_hoje if a.get("status") in ["Parcial", "Não realizado"]]
+
+    # Montar mapa de respostas já salvas (por título)
+    respostas_salvas = {}
+    for r in excel_dia:
+        titulo = r.get("titulo", "").strip().lower()
+        if titulo:
+            respostas_salvas[titulo] = {
+                "status":        r.get("status", ""),
+                "houve_atraso":  r.get("houve_atraso", ""),
+                "motivo_atraso": r.get("motivo_atraso", ""),
+                "solicitante_extra": r.get("solicitante_extra", ""),
+                "observacoes":   r.get("observacoes", ""),
+            }
+
+    # Atividades do Excel do dia que não estão no Outlook
+    titulos_outlook = {a.get("titulo","").strip().lower() for a in all_activities}
+    extras_excel = [
+        {**r, "origem": "Excel"} for r in excel_dia
+        if r.get("titulo","").strip().lower() not in titulos_outlook
+           and r.get("titulo","").strip()
+    ]
+    all_activities = all_activities + extras_excel
 
     dias_pt = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
 
     return jsonify({
-        "data": today.strftime("%d/%m/%Y"),
-        "dia_semana": dias_pt[today.weekday()],
-        "atividades": all_activities,
+        "data":        target.strftime("%d/%m/%Y"),
+        "dia_semana":  dias_pt[target.weekday()],
+        "atividades":  all_activities,
+        "respostas_salvas": respostas_salvas,
+        "ja_preenchido": len(respostas_salvas) > 0,
         "stats": {
             "total_atividades": len(all_activities),
-            "total_reunioes": len(reunioes),
+            "total_reunioes":   len(reunioes),
             "horas_planejadas": round(horas_planejadas, 1),
-            "horas_livres": round(max(0, 8 - horas_planejadas), 1),
-            "pendencias": len(pendencias),
+            "horas_livres":     round(max(0, 8 - horas_planejadas), 1),
+            "pendencias":       len(pendencias),
         },
     })
 
