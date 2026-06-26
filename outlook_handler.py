@@ -2,6 +2,9 @@ import requests
 import recurring_ical_events
 from datetime import datetime, date, timedelta
 from icalendar import Calendar
+import pytz
+
+BRAZIL_TZ = pytz.timezone("America/Sao_Paulo")
 
 DEFAULT_ICS_URL = "https://outlook.office365.com/owa/calendar/b4f371367d784fee84e647b6698d8e72@biosyn.com.br/48a30a356a004b48b4b44e9a323ab20913391635065337886648/calendar.ics"
 
@@ -42,11 +45,11 @@ def _fetch_events(target_date, ics_url=None):
                 if not hasattr(dtstart, "hour"):
                     continue
 
-                # Normalizar para naive local
+                # Normalizar para horário de Brasília (America/Sao_Paulo)
                 if dtstart.tzinfo:
-                    dtstart = dtstart.astimezone(tz=None).replace(tzinfo=None)
+                    dtstart = dtstart.astimezone(BRAZIL_TZ).replace(tzinfo=None)
                 if dtend.tzinfo:
-                    dtend = dtend.astimezone(tz=None).replace(tzinfo=None)
+                    dtend = dtend.astimezone(BRAZIL_TZ).replace(tzinfo=None)
 
                 # Garantir que o evento é de fato no target_date após conversão de fuso
                 if dtstart.date() != target_date:
