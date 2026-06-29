@@ -21,6 +21,7 @@ if DATABASE_URL:
             password=unquote(r.password or ""),
             database=r.path.lstrip("/"),
             ssl_context=True,
+            timeout=10,
         )
 
     def _ensure_db():
@@ -90,24 +91,32 @@ if DATABASE_URL:
         c.close()
 
     def get_all_data():
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("SELECT * FROM checklist ORDER BY data DESC, horario_inicio")
-        rows = _rows_to_dicts(cur.fetchall())
-        cur.close(); c.close()
-        return rows
+        try:
+            c = _conn()
+            cur = c.cursor()
+            cur.execute("SELECT * FROM checklist ORDER BY data DESC, horario_inicio")
+            rows = _rows_to_dicts(cur.fetchall())
+            cur.close(); c.close()
+            return rows
+        except Exception as e:
+            print(f"[DB] get_all_data erro: {e}")
+            return []
 
     def get_today_activities(usuario=None):
-        today_str = date.today().strftime("%d/%m/%Y")
-        c = _conn()
-        cur = c.cursor()
-        if usuario:
-            cur.execute("SELECT * FROM checklist WHERE data=%s AND responsavel=%s", (today_str, usuario))
-        else:
-            cur.execute("SELECT * FROM checklist WHERE data=%s", (today_str,))
-        rows = _rows_to_dicts(cur.fetchall())
-        cur.close(); c.close()
-        return rows
+        try:
+            today_str = date.today().strftime("%d/%m/%Y")
+            c = _conn()
+            cur = c.cursor()
+            if usuario:
+                cur.execute("SELECT * FROM checklist WHERE data=%s AND responsavel=%s", (today_str, usuario))
+            else:
+                cur.execute("SELECT * FROM checklist WHERE data=%s", (today_str,))
+            rows = _rows_to_dicts(cur.fetchall())
+            cur.close(); c.close()
+            return rows
+        except Exception as e:
+            print(f"[DB] get_today_activities erro: {e}")
+            return []
 
 else:
     # Fallback SQLite para desenvolvimento local sem DATABASE_URL
