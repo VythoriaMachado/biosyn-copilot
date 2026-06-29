@@ -1,126 +1,66 @@
 """
 Banco de dados PostgreSQL (Supabase) — usado na versão cloud (Render).
 Mesma interface que excel_handler.py.
-Fallback para SQLite se DATABASE_URL não estiver configurado.
+Fallback para SQLite se SUPABASE_URL não estiver configurado.
 """
 import os
 from datetime import date, datetime, timedelta
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
-if DATABASE_URL:
-    import pg8000.dbapi
-    import re
-
-    def _parse_db_url(url):
-        # Formato: postgresql://user:pass@host:port/db
-        # O user pode conter pontos (ex: postgres.fyehelkbmbbysikvqeke)
-        m = re.match(
-            r"postgresql://([^:]+):(.+)@([^:/]+):(\d+)/(.+)",
-            url
-        )
-        if not m:
-            raise ValueError(f"DATABASE_URL inválida: {url}")
-        from urllib.parse import unquote
-        return {
-            "user":     m.group(1),
-            "password": unquote(m.group(2)),
-            "host":     m.group(3),
-            "port":     int(m.group(4)),
-            "database": m.group(5),
-        }
-
-    _DB_PARAMS = _parse_db_url(DATABASE_URL)
-
-    def _conn():
-        return pg8000.dbapi.connect(
-            host=_DB_PARAMS["host"],
-            port=_DB_PARAMS["port"],
-            user=_DB_PARAMS["user"],
-            password=_DB_PARAMS["password"],
-            database=_DB_PARAMS["database"],
-            ssl_context=True,
-            timeout=10,
-        )
+if SUPABASE_URL and SUPABASE_KEY:
+    from supabase import create_client
+    _sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     def _ensure_db():
+        # Supabase gerencia o schema; apenas valida conexão
         try:
-            c = _conn()
-            cur = c.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS checklist (
-                    id SERIAL PRIMARY KEY,
-                    data TEXT, dia_semana TEXT, titulo TEXT,
-                    horario_inicio TEXT, horario_fim TEXT, tempo_previsto INTEGER,
-                    descricao TEXT, responsavel TEXT, origem TEXT, status TEXT,
-                    tempo_executado TEXT, houve_atraso TEXT, motivo_atraso TEXT,
-                    reagendado TEXT, prioridade TEXT, atividade_extra TEXT,
-                    categoria_extra TEXT, nome_atividade_extra TEXT, tempo_extra INTEGER,
-                    solicitante_extra TEXT, observacoes TEXT, timestamp_registro TEXT
-                )
-            """)
-            c.commit()
-            cur.close()
-            c.close()
-            print("[DB] Conectado ao PostgreSQL (Supabase)")
+            _sb.table("checklist").select("id").limit(1).execute()
+            print("[DB] Conectado ao Supabase REST API")
         except Exception as e:
-            print(f"[DB] Aviso: não foi possível conectar ao PostgreSQL: {e}")
+            print(f"[DB] Aviso: {e}")
 
     _ensure_db()
 
-    def _cols():
-        return ["id","data","dia_semana","titulo","horario_inicio","horario_fim",
-                "tempo_previsto","descricao","responsavel","origem","status",
-                "tempo_executado","houve_atraso","motivo_atraso","reagendado",
-                "prioridade","atividade_extra","categoria_extra","nome_atividade_extra",
-                "tempo_extra","solicitante_extra","observacoes","timestamp_registro"]
-
-    def _rows_to_dicts(rows):
-        cols = _cols()
-        return [dict(zip(cols, row)) for row in rows]
-
     def save_checklist(entries):
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        rows = []
+        for e in entries:
+            rows.append({
+                "data":                  e.get("data", ""),
+                "dia_semana":            e.get("dia_semana", ""),
+                "titulo":                e.get("titulo", ""),
+                "horario_inicio":        e.get("horario_inicio", ""),
+                "horario_fim":           e.get("horario_fim", ""),
+                "tempo_previsto":        int(e.get("tempo_previsto") or 0),
+                "descricao":             e.get("descricao", ""),
+                "responsavel":           e.get("responsavel", ""),
+                "origem":                e.get("origem", ""),
+                "status":                e.get("status", ""),
+                "tempo_executado":       e.get("tempo_executado", ""),
+                "houve_atraso":          e.get("houve_atraso", "Não"),
+                "motivo_atraso":         e.get("motivo_atraso", ""),
+                "reagendado":            e.get("reagendado", "Não"),
+                "prioridade":            e.get("prioridade", "Média"),
+                "atividade_extra":       e.get("atividade_extra", "Não"),
+                "categoria_extra":       e.get("categoria_extra", ""),
+                "nome_atividade_extra":  e.get("nome_atividade_extra", ""),
+                "tempo_extra":           int(e.get("tempo_extra") or 0),
+                "solicitante_extra":     e.get("solicitante_extra", ""),
+                "observacoes":           e.get("observacoes", ""),
+                "timestamp_registro":    now,
+            })
         try:
-            c = _conn()
-            cur = c.cursor()
-            for e in entries:
-                cur.execute("""
-                    INSERT INTO checklist (
-                        data, dia_semana, titulo, horario_inicio, horario_fim,
-                        tempo_previsto, descricao, responsavel, origem, status,
-                        tempo_executado, houve_atraso, motivo_atraso, reagendado,
-                        prioridade, atividade_extra, categoria_extra,
-                        nome_atividade_extra, tempo_extra, solicitante_extra,
-                        observacoes, timestamp_registro
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """, (
-                    e.get("data",""), e.get("dia_semana",""), e.get("titulo",""),
-                    e.get("horario_inicio",""), e.get("horario_fim",""),
-                    int(e.get("tempo_previsto") or 0), e.get("descricao",""),
-                    e.get("responsavel",""), e.get("origem",""), e.get("status",""),
-                    e.get("tempo_executado",""), e.get("houve_atraso","Não"),
-                    e.get("motivo_atraso",""), e.get("reagendado","Não"),
-                    e.get("prioridade","Média"), e.get("atividade_extra","Não"),
-                    e.get("categoria_extra",""), e.get("nome_atividade_extra",""),
-                    int(e.get("tempo_extra") or 0), e.get("solicitante_extra",""),
-                    e.get("observacoes",""), now
-                ))
-            c.commit()
-            cur.close()
-            c.close()
+            _sb.table("checklist").insert(rows).execute()
         except Exception as e:
             print(f"[DB] save_checklist erro: {e}")
             raise RuntimeError(f"Erro ao salvar no banco: {e}")
 
     def get_all_data():
         try:
-            c = _conn()
-            cur = c.cursor()
-            cur.execute("SELECT * FROM checklist ORDER BY data DESC, horario_inicio")
-            rows = _rows_to_dicts(cur.fetchall())
-            cur.close(); c.close()
-            return rows
+            res = _sb.table("checklist").select("*").order("data", desc=True).execute()
+            return res.data or []
         except Exception as e:
             print(f"[DB] get_all_data erro: {e}")
             return []
@@ -128,21 +68,17 @@ if DATABASE_URL:
     def get_today_activities(usuario=None):
         try:
             today_str = date.today().strftime("%d/%m/%Y")
-            c = _conn()
-            cur = c.cursor()
+            q = _sb.table("checklist").select("*").eq("data", today_str)
             if usuario:
-                cur.execute("SELECT * FROM checklist WHERE data=%s AND responsavel=%s", (today_str, usuario))
-            else:
-                cur.execute("SELECT * FROM checklist WHERE data=%s", (today_str,))
-            rows = _rows_to_dicts(cur.fetchall())
-            cur.close(); c.close()
-            return rows
+                q = q.eq("responsavel", usuario)
+            res = q.execute()
+            return res.data or []
         except Exception as e:
             print(f"[DB] get_today_activities erro: {e}")
             return []
 
 else:
-    # Fallback SQLite para desenvolvimento local sem DATABASE_URL
+    # Fallback SQLite para desenvolvimento local
     import sqlite3
 
     DB_PATH = os.path.join(os.path.dirname(__file__), "cronograma.db")
@@ -216,7 +152,6 @@ def get_weekly_data(reference_date=None):
     import pandas as pd
     if reference_date is None:
         reference_date = date.today()
-    # Últimos 7 dias úteis (inclui semana anterior quando é início de semana)
     start = reference_date - timedelta(days=7)
     end = reference_date
 

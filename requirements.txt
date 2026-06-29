@@ -7,4 +7,4 @@ icalendar==7.2.0
 recurring-ical-events==3.8.2
 python-dateutil==2.9.0.post0
 pytz==2024.1
-pg8000==1.31.2
+supabase==2.10.0
