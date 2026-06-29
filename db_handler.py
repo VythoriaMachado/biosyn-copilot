@@ -62,33 +62,37 @@ if DATABASE_URL:
 
     def save_checklist(entries):
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        c = _conn()
-        cur = c.cursor()
-        for e in entries:
-            cur.execute("""
-                INSERT INTO checklist (
-                    data, dia_semana, titulo, horario_inicio, horario_fim,
-                    tempo_previsto, descricao, responsavel, origem, status,
-                    tempo_executado, houve_atraso, motivo_atraso, reagendado,
-                    prioridade, atividade_extra, categoria_extra,
-                    nome_atividade_extra, tempo_extra, solicitante_extra,
-                    observacoes, timestamp_registro
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (
-                e.get("data",""), e.get("dia_semana",""), e.get("titulo",""),
-                e.get("horario_inicio",""), e.get("horario_fim",""),
-                e.get("tempo_previsto",0), e.get("descricao",""),
-                e.get("responsavel",""), e.get("origem",""), e.get("status",""),
-                e.get("tempo_executado",""), e.get("houve_atraso","Não"),
-                e.get("motivo_atraso",""), e.get("reagendado","Não"),
-                e.get("prioridade","Média"), e.get("atividade_extra","Não"),
-                e.get("categoria_extra",""), e.get("nome_atividade_extra",""),
-                e.get("tempo_extra",0), e.get("solicitante_extra",""),
-                e.get("observacoes",""), now
-            ))
-        c.commit()
-        cur.close()
-        c.close()
+        try:
+            c = _conn()
+            cur = c.cursor()
+            for e in entries:
+                cur.execute("""
+                    INSERT INTO checklist (
+                        data, dia_semana, titulo, horario_inicio, horario_fim,
+                        tempo_previsto, descricao, responsavel, origem, status,
+                        tempo_executado, houve_atraso, motivo_atraso, reagendado,
+                        prioridade, atividade_extra, categoria_extra,
+                        nome_atividade_extra, tempo_extra, solicitante_extra,
+                        observacoes, timestamp_registro
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    e.get("data",""), e.get("dia_semana",""), e.get("titulo",""),
+                    e.get("horario_inicio",""), e.get("horario_fim",""),
+                    int(e.get("tempo_previsto") or 0), e.get("descricao",""),
+                    e.get("responsavel",""), e.get("origem",""), e.get("status",""),
+                    e.get("tempo_executado",""), e.get("houve_atraso","Não"),
+                    e.get("motivo_atraso",""), e.get("reagendado","Não"),
+                    e.get("prioridade","Média"), e.get("atividade_extra","Não"),
+                    e.get("categoria_extra",""), e.get("nome_atividade_extra",""),
+                    int(e.get("tempo_extra") or 0), e.get("solicitante_extra",""),
+                    e.get("observacoes",""), now
+                ))
+            c.commit()
+            cur.close()
+            c.close()
+        except Exception as e:
+            print(f"[DB] save_checklist erro: {e}")
+            raise RuntimeError(f"Erro ao salvar no banco: {e}")
 
     def get_all_data():
         try:
