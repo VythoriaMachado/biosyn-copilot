@@ -168,8 +168,9 @@ def get_weekly_data(reference_date=None):
     import pandas as pd
     if reference_date is None:
         reference_date = date.today()
-    start = reference_date - timedelta(days=reference_date.weekday())
-    end = start + timedelta(days=4)
+    # Últimos 7 dias úteis (inclui semana anterior quando é início de semana)
+    start = reference_date - timedelta(days=7)
+    end = reference_date
 
     records = get_all_data()
     if not records:

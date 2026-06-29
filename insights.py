@@ -1,11 +1,24 @@
+import os
 from datetime import date, timedelta
 import pandas as pd
-from excel_handler import get_historical_data
+
+if os.environ.get("RENDER"):
+    from db_handler import get_all_data as _get_all
+    def _get_historical(days):
+        records = _get_all()
+        if not records:
+            return pd.DataFrame()
+        df = pd.DataFrame(records)
+        df["Data_dt"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
+        cutoff = date.today() - timedelta(days=days)
+        return df[df["Data_dt"].dt.date >= cutoff]
+else:
+    from excel_handler import get_historical_data as _get_historical
 
 
 def generate_insights(days=30):
-    df = get_historical_data(days=days)
-    if df.empty:
+    df = _get_historical(days=days)
+    if df is None or df.empty:
         return _default_insights()
 
     # Normalizar nomes de colunas para minúsculo
