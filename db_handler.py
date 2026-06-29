@@ -10,7 +10,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 if DATABASE_URL:
     import pg8000.dbapi
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, unquote
 
     def _conn():
         r = urlparse(DATABASE_URL)
@@ -18,29 +18,33 @@ if DATABASE_URL:
             host=r.hostname,
             port=r.port or 5432,
             user=r.username,
-            password=r.password,
+            password=unquote(r.password or ""),
             database=r.path.lstrip("/"),
             ssl_context=True,
         )
 
     def _ensure_db():
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS checklist (
-                id SERIAL PRIMARY KEY,
-                data TEXT, dia_semana TEXT, titulo TEXT,
-                horario_inicio TEXT, horario_fim TEXT, tempo_previsto INTEGER,
-                descricao TEXT, responsavel TEXT, origem TEXT, status TEXT,
-                tempo_executado TEXT, houve_atraso TEXT, motivo_atraso TEXT,
-                reagendado TEXT, prioridade TEXT, atividade_extra TEXT,
-                categoria_extra TEXT, nome_atividade_extra TEXT, tempo_extra INTEGER,
-                solicitante_extra TEXT, observacoes TEXT, timestamp_registro TEXT
-            )
-        """)
-        c.commit()
-        cur.close()
-        c.close()
+        try:
+            c = _conn()
+            cur = c.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS checklist (
+                    id SERIAL PRIMARY KEY,
+                    data TEXT, dia_semana TEXT, titulo TEXT,
+                    horario_inicio TEXT, horario_fim TEXT, tempo_previsto INTEGER,
+                    descricao TEXT, responsavel TEXT, origem TEXT, status TEXT,
+                    tempo_executado TEXT, houve_atraso TEXT, motivo_atraso TEXT,
+                    reagendado TEXT, prioridade TEXT, atividade_extra TEXT,
+                    categoria_extra TEXT, nome_atividade_extra TEXT, tempo_extra INTEGER,
+                    solicitante_extra TEXT, observacoes TEXT, timestamp_registro TEXT
+                )
+            """)
+            c.commit()
+            cur.close()
+            c.close()
+            print("[DB] Conectado ao PostgreSQL (Supabase)")
+        except Exception as e:
+            print(f"[DB] Aviso: não foi possível conectar ao PostgreSQL: {e}")
 
     _ensure_db()
 
