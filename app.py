@@ -59,8 +59,7 @@ def api_today():
     reunioes = [a for a in all_activities if a.get("tipo") == "reuniao" or
                 any(w in a.get("titulo", "").lower() for w in ["reunião", "meeting", "call", "sync", "alinhamento"])]
 
-    # Buscar registros já salvos no Excel para o dia alvo
-    from excel_handler import get_all_data
+    # Buscar registros já salvos (usa o handler correto: SQLite na nuvem, Excel local)
     target_str = target.strftime("%d/%m/%Y")
     all_records = get_all_data()
     excel_dia = [r for r in all_records if r.get("data", "") == target_str]
