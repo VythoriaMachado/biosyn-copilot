@@ -250,19 +250,43 @@ def get_managerial_data(period="month"):
     }
 
 
+def _mins_to_time(mins):
+    try:
+        m = int(mins)
+        return f"{m//60:02d}:{m%60:02d}"
+    except:
+        return "00:00"
+
+
 def propose_next_day_schedule(outlook_events=None):
     today = date.today()
     next_day = today + timedelta(days=1)
     if next_day.weekday() >= 5:
         next_day = today + timedelta(days=7 - today.weekday())
+
+    schedule = []
+    for ev in (outlook_events or []):
+        schedule.append({
+            "titulo":         ev.get("titulo", "Evento"),
+            "horario_inicio": _mins_to_time(ev.get("inicio", 8*60)),
+            "horario_fim":    _mins_to_time(ev.get("fim", 9*60)),
+            "tempo_previsto": ev.get("duracao", 60),
+            "origem":         "Outlook",
+            "prioridade":     "Alta",
+            "tipo":           "evento",
+        })
+
+    used = sum(s["tempo_previsto"] for s in schedule)
+    available = 8 * 60
+
     return {
-        "data": next_day.strftime("%d/%m/%Y"),
-        "dia_semana": _get_weekday(next_day),
-        "schedule": outlook_events or [],
-        "horas_disponiveis": 8.0,
-        "horas_planejadas": round(sum(e.get("duracao", 60) for e in (outlook_events or [])) / 60, 1),
-        "backlog_min": 0,
-        "ocupacao_pct": 0,
+        "data":              next_day.strftime("%d/%m/%Y"),
+        "dia_semana":        _get_weekday(next_day),
+        "schedule":          schedule,
+        "horas_disponiveis": round(available / 60, 1),
+        "horas_planejadas":  round(used / 60, 1),
+        "backlog_min":       max(0, used - available),
+        "ocupacao_pct":      round((used / available) * 100, 1) if available > 0 else 0,
     }
 
 
