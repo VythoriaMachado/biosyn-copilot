@@ -10,16 +10,35 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 if DATABASE_URL:
     import pg8000.dbapi
-    from urllib.parse import urlparse, unquote
+    import re
+
+    def _parse_db_url(url):
+        # Formato: postgresql://user:pass@host:port/db
+        # O user pode conter pontos (ex: postgres.fyehelkbmbbysikvqeke)
+        m = re.match(
+            r"postgresql://([^:]+):(.+)@([^:/]+):(\d+)/(.+)",
+            url
+        )
+        if not m:
+            raise ValueError(f"DATABASE_URL inválida: {url}")
+        from urllib.parse import unquote
+        return {
+            "user":     m.group(1),
+            "password": unquote(m.group(2)),
+            "host":     m.group(3),
+            "port":     int(m.group(4)),
+            "database": m.group(5),
+        }
+
+    _DB_PARAMS = _parse_db_url(DATABASE_URL)
 
     def _conn():
-        r = urlparse(DATABASE_URL)
         return pg8000.dbapi.connect(
-            host=r.hostname,
-            port=r.port or 5432,
-            user=r.username,
-            password=unquote(r.password or ""),
-            database=r.path.lstrip("/"),
+            host=_DB_PARAMS["host"],
+            port=_DB_PARAMS["port"],
+            user=_DB_PARAMS["user"],
+            password=_DB_PARAMS["password"],
+            database=_DB_PARAMS["database"],
             ssl_context=True,
             timeout=10,
         )
