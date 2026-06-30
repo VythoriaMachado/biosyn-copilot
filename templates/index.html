@@ -158,6 +158,35 @@
        VIEW: CHECKLIST
   ═══════════════════════════════════════════════════════════ -->
   <section class="view" id="view-checklist">
+
+    <!-- FILTRO DE HISTÓRICO -->
+    <div class="history-filter-bar">
+      <div class="history-filter-inner">
+        <i class="fa-solid fa-calendar-week" style="color:var(--sky)"></i>
+        <span style="font-size:13px;font-weight:600;color:var(--navy)">Consultar data:</span>
+        <input type="date" id="historyDatePicker" class="history-date-input" onchange="ChecklistHistory.load(this.value)">
+        <button class="btn-icon-sm" onclick="ChecklistHistory.clear()" id="btnHistoryClear" style="display:none" title="Voltar ao checklist atual">
+          <i class="fa-solid fa-xmark"></i> Voltar ao atual
+        </button>
+      </div>
+    </div>
+
+    <!-- PAINEL DE HISTÓRICO (oculto por padrão) -->
+    <div id="historyPanel" style="display:none"></div>
+
+    <!-- MODAL PIN ADMIN -->
+    <div id="adminPinModal" class="modal-overlay" style="display:none">
+      <div class="modal-box">
+        <h3 style="margin-bottom:8px"><i class="fa-solid fa-lock" style="color:var(--sky)"></i> Autorização de Administrador</h3>
+        <p style="font-size:13px;opacity:.7;margin-bottom:16px">Digite o PIN de administrador para liberar a edição.</p>
+        <input type="password" id="adminPinInput" class="form-input" placeholder="PIN" maxlength="10" style="text-align:center;letter-spacing:6px;font-size:20px">
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn-secondary" onclick="ChecklistHistory.closePin()"><i class="fa-solid fa-xmark"></i> Cancelar</button>
+          <button class="btn-primary" onclick="ChecklistHistory.confirmPin()"><i class="fa-solid fa-unlock"></i> Liberar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Indicador da data do checklist -->
     <div id="checklistDateBanner" style="display:none;text-align:center;margin-bottom:12px">
       <span style="background:var(--navy);color:white;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600">

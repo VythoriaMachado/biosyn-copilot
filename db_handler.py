@@ -77,6 +77,17 @@ if SUPABASE_URL and SUPABASE_KEY:
             print(f"[DB] get_today_activities erro: {e}")
             return []
 
+    def update_checklist_entry(record_id, status, houve_atraso, observacoes):
+        try:
+            _sb.table("checklist").update({
+                "status":       status,
+                "houve_atraso": houve_atraso,
+                "observacoes":  observacoes,
+            }).eq("id", record_id).execute()
+        except Exception as e:
+            print(f"[DB] update_checklist_entry erro: {e}")
+            raise RuntimeError(f"Erro ao atualizar registro: {e}")
+
 else:
     # Fallback SQLite para desenvolvimento local
     import sqlite3
@@ -144,6 +155,13 @@ else:
             else:
                 rows = c.execute("SELECT * FROM checklist WHERE data=?", (today_str,)).fetchall()
         return [dict(r) for r in rows]
+
+    def update_checklist_entry(record_id, status, houve_atraso, observacoes):
+        with _conn() as c:
+            c.execute(
+                "UPDATE checklist SET status=?, houve_atraso=?, observacoes=? WHERE id=?",
+                (status, houve_atraso, observacoes, record_id)
+            )
 
 
 # Funções compartilhadas (independente do backend)

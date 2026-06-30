@@ -1090,6 +1090,194 @@ const UserProfile = {
   }
 };
 
+// ── CHECKLIST HISTORY ─────────────────────────────────────────────────────
+
+const ChecklistHistory = {
+  _pinCallback: null,
+  _adminUnlocked: false,
+
+  async load(dateValue) {
+    if (!dateValue) return;
+    // Converter de YYYY-MM-DD para DD/MM/YYYY
+    const [y, m, d] = dateValue.split('-');
+    const dataBR = `${d}/${m}/${y}`;
+    const profile = UserProfile.get();
+    const usuario = profile ? profile.name : '';
+
+    const panel = $('historyPanel');
+    const checklist = $('checklistDateBanner').parentElement;
+
+    panel.style.display = 'block';
+    $('btnHistoryClear').style.display = 'flex';
+    // Ocultar checklist normal
+    ['checklistCard','checklistSummary','checklistEmpty','checklistDemandas','checklistDateBanner'].forEach(id => {
+      const el = $(id); if (el) el.style.display = 'none';
+    });
+    $('progressFill').style.width = '0%';
+    $('progressText').textContent = '';
+
+    panel.innerHTML = `<div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando registros de ${dataBR}...</div>`;
+
+    try {
+      const res = await fetch(`/api/history/date?data=${encodeURIComponent(dataBR)}&usuario=${encodeURIComponent(usuario)}`);
+      const data = await res.json();
+      this._render(data.records || [], dataBR);
+    } catch(e) {
+      panel.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>Erro ao carregar histórico</h3></div>`;
+    }
+  },
+
+  _render(records, dataBR) {
+    const panel = $('historyPanel');
+    if (!records.length) {
+      panel.innerHTML = `<div class="empty-state"><i class="fa-solid fa-inbox"></i><h3>Nenhum registro para ${dataBR}</h3><p>O checklist desta data não foi preenchido.</p></div>`;
+      return;
+    }
+    const statusBadge = s => {
+      if (s === 'Concluído') return `<span class="history-status-badge badge-concluido">✓ Concluído</span>`;
+      if (s === 'Parcial')   return `<span class="history-status-badge badge-parcial">~ Parcial</span>`;
+      if (s === 'Pendente')  return `<span class="history-status-badge badge-pendente">⏳ Pendente</span>`;
+      return `<span class="history-status-badge badge-nao">✗ Não realizado</span>`;
+    };
+    let html = `<div class="history-panel-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="font-size:16px;color:var(--navy)"><i class="fa-solid fa-calendar-check" style="color:var(--sky)"></i> Registros de ${dataBR}</h3>
+        <span style="font-size:12px;color:var(--gray-600)">${records.length} atividade(s)</span>
+      </div>`;
+    records.forEach((r, i) => {
+      html += `
+      <div class="history-record-card" id="hcard-${i}">
+        <div class="history-record-title">${r.titulo || '—'}</div>
+        <div class="history-record-meta">
+          ${r.horario_inicio ? `<span><i class="fa-solid fa-clock"></i> ${r.horario_inicio}–${r.horario_fim}</span>` : ''}
+          <span><i class="fa-solid fa-tag"></i> ${r.origem || '—'}</span>
+          <span><i class="fa-solid fa-user"></i> ${r.responsavel || '—'}</span>
+        </div>
+        <div id="hcard-view-${i}">
+          ${statusBadge(r.status)}
+          ${r.houve_atraso === 'Sim' ? `<div style="margin-top:6px;font-size:12px;color:#E53935"><i class="fa-solid fa-clock-rotate-left"></i> Atraso: ${r.motivo_atraso || '—'}</div>` : ''}
+          ${r.observacoes ? `<div style="margin-top:6px;font-size:12px;color:var(--gray-600)"><i class="fa-solid fa-note-sticky"></i> ${r.observacoes}</div>` : ''}
+          <div class="history-edit-row">
+            <button class="history-edit-btn" onclick="ChecklistHistory.requestEdit(${i}, ${JSON.stringify(r).replace(/"/g,'&quot;')})">
+              <i class="fa-solid fa-pen"></i> Editar
+            </button>
+          </div>
+        </div>
+        <div id="hcard-edit-${i}" style="display:none"></div>
+      </div>`;
+    });
+    html += `</div>`;
+    panel.innerHTML = html;
+  },
+
+  requestEdit(idx, record) {
+    if (this._adminUnlocked) {
+      this._openEdit(idx, record);
+      return;
+    }
+    this._pinCallback = () => this._openEdit(idx, record);
+    $('adminPinInput').value = '';
+    $('adminPinModal').style.display = 'flex';
+    setTimeout(() => $('adminPinInput').focus(), 100);
+  },
+
+  confirmPin() {
+    const pin = $('adminPinInput').value.trim();
+    if (pin !== '0768') {
+      showToast('PIN incorreto.', 'error');
+      $('adminPinInput').value = '';
+      return;
+    }
+    this._adminUnlocked = true;
+    $('adminPinModal').style.display = 'none';
+    if (this._pinCallback) { this._pinCallback(); this._pinCallback = null; }
+  },
+
+  closePin() {
+    $('adminPinModal').style.display = 'none';
+    this._pinCallback = null;
+  },
+
+  _openEdit(idx, r) {
+    $(`hcard-${idx}`).classList.add('editing');
+    $(`hcard-view-${idx}`).style.display = 'none';
+    const sel = (field, options, current) =>
+      `<div class="history-field-group">
+        <div class="history-field-label">${field}</div>
+        <div class="btn-group" style="flex-wrap:wrap;gap:6px">
+          ${options.map(v => `<button class="opt-btn ${v===current?'selected':''}" onclick="this.parentElement.querySelectorAll('.opt-btn').forEach(b=>b.className='opt-btn');this.classList.add('selected')" data-val="${v}">${v}</button>`).join('')}
+        </div>
+      </div>`;
+    $(`hcard-edit-${idx}`).style.display = 'block';
+    $(`hcard-edit-${idx}`).innerHTML = `
+      ${sel('Status', ['Concluído','Parcial','Não realizado'], r.status)}
+      ${sel('Houve atraso?', ['Não','Sim'], r.houve_atraso)}
+      <div class="history-field-group">
+        <div class="history-field-label">Observações</div>
+        <input class="form-input" id="hobs-${idx}" value="${(r.observacoes||'').replace(/"/g,'&quot;')}" placeholder="Observações...">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="history-save-btn" onclick="ChecklistHistory.saveEdit(${idx}, ${r.id})">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar
+        </button>
+        <button class="history-cancel-btn" onclick="ChecklistHistory.cancelEdit(${idx})">Cancelar</button>
+      </div>`;
+  },
+
+  async saveEdit(idx, recordId) {
+    const card = $(`hcard-edit-${idx}`);
+    const getSelected = label => {
+      const groups = card.querySelectorAll('.btn-group');
+      for (const g of groups) {
+        const sel = g.querySelector('.opt-btn.selected');
+        if (sel) {
+          // Check which group by position
+        }
+      }
+      // simpler: get all selected btns
+      const btns = card.querySelectorAll('.opt-btn.selected');
+      return Array.from(btns).map(b => b.dataset.val);
+    };
+    const selected = getSelected();
+    const status      = selected[0] || '';
+    const houve_atraso = selected[1] || '';
+    const observacoes = $(`hobs-${idx}`).value;
+
+    try {
+      const res = await fetch('/api/history/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: recordId, status, houve_atraso, observacoes }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Registro atualizado com sucesso!', 'success');
+        // Reload
+        const picker = $('historyDatePicker');
+        if (picker.value) this.load(picker.value);
+      } else {
+        showToast('Erro ao salvar: ' + (data.error || ''), 'error');
+      }
+    } catch(e) {
+      showToast('Erro ao salvar.', 'error');
+    }
+  },
+
+  cancelEdit(idx) {
+    $(`hcard-${idx}`).classList.remove('editing');
+    $(`hcard-view-${idx}`).style.display = 'block';
+    $(`hcard-edit-${idx}`).style.display = 'none';
+  },
+
+  clear() {
+    $('historyPanel').style.display = 'none';
+    $('btnHistoryClear').style.display = 'none';
+    $('historyDatePicker').value = '';
+    // Restaurar checklist normal
+    Checklist.init();
+  },
+};
+
 // ── INIT ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   UserProfile.check();

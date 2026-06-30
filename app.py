@@ -232,6 +232,34 @@ def api_history():
     return jsonify({"records": data, "total": len(data)})
 
 
+@app.route("/api/history/date")
+def api_history_date():
+    data_str = request.args.get("data", "")
+    usuario  = request.args.get("usuario", "")
+    all_records = get_all_data()
+    records = [r for r in all_records if r.get("data", "") == data_str]
+    if usuario:
+        records = [r for r in records if r.get("responsavel", "").strip().lower() == usuario.strip().lower()]
+    return jsonify({"records": records, "total": len(records)})
+
+
+@app.route("/api/history/update", methods=["POST"])
+def api_history_update():
+    data = request.get_json()
+    record_id  = data.get("id")
+    status     = data.get("status", "")
+    houve_atraso = data.get("houve_atraso", "")
+    observacoes  = data.get("observacoes", "")
+    if not record_id:
+        return jsonify({"error": "ID não informado"}), 400
+    try:
+        from db_handler import update_checklist_entry
+        update_checklist_entry(record_id, status, houve_atraso, observacoes)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     app.run(debug=False, host="0.0.0.0", port=port)

@@ -358,6 +358,72 @@ body {
   font-size: 16px; padding: 4px; transition: color .2s;
 }
 .demanda-remove:hover { color: #E53935; }
+
+/* ── HISTORY FILTER BAR ── */
+.history-filter-bar {
+  background: #f0f7ff; border: 1px solid #cce3f7; border-radius: 12px;
+  padding: 10px 18px; margin-bottom: 14px;
+}
+.history-filter-inner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.history-date-input {
+  border: 1px solid var(--sky); border-radius: 8px; padding: 5px 10px;
+  font-size: 13px; color: var(--navy); background: white; cursor: pointer;
+}
+.btn-icon-sm {
+  background: var(--navy); color: white; border: none; border-radius: 8px;
+  padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+}
+.btn-icon-sm:hover { opacity: .85; }
+
+/* ── HISTORY PANEL ── */
+.history-panel-wrap { padding: 4px 0; }
+.history-record-card {
+  background: white; border: 1px solid var(--gray-100); border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 10px; position: relative;
+}
+.history-record-card.editing { border-color: var(--sky); box-shadow: 0 0 0 2px #cce3f7; }
+.history-record-title { font-weight: 700; font-size: 14px; color: var(--navy); margin-bottom: 6px; }
+.history-record-meta { font-size: 12px; color: var(--gray-600); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.history-status-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+}
+.badge-concluido { background: #E8F5E9; color: #1DB954; }
+.badge-parcial    { background: #FFF8E1; color: #F4A900; }
+.badge-nao        { background: #FDECEA; color: #E53935; }
+.badge-pendente   { background: #E8F4FD; color: #099CD6; }
+.history-edit-row { display: flex; gap: 8px; margin-top: 10px; }
+.history-field-group { margin-bottom: 10px; }
+.history-field-label { font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; margin-bottom: 4px; }
+.history-edit-btn {
+  background: none; border: 1px solid var(--sky); color: var(--sky);
+  border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all .2s;
+}
+.history-edit-btn:hover { background: var(--sky); color: white; }
+.history-save-btn {
+  background: var(--navy); color: white; border: none;
+  border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+}
+.history-save-btn:hover { opacity: .85; }
+.history-cancel-btn {
+  background: none; border: 1px solid var(--gray-200); color: var(--gray-600);
+  border-radius: 8px; padding: 4px 12px; font-size: 12px;
+  cursor: pointer;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 9999;
+}
+.modal-box {
+  background: white; border-radius: 16px; padding: 28px 32px;
+  max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  text-align: center;
+}
+
 .btn-agenda-amanha {
   background: none; border: 1px solid var(--sky); color: var(--sky);
   border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600;
