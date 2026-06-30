@@ -426,7 +426,7 @@ const Checklist = {
         </div>`;
     } else {
       listHtml = this.demandas.map((d, i) => `
-        <div class="demanda-card">
+        <div class="demanda-card" style="flex-wrap:wrap;gap:8px">
           <div class="demanda-num">${i+1}</div>
           <div class="demanda-body">
             <div class="demanda-title">${d.descricao || '(sem descrição)'}</div>
@@ -436,11 +436,15 @@ const Checklist = {
               <i class="fa-solid fa-building"></i> ${d.departamento || '—'}
               &nbsp;·&nbsp;
               <i class="fa-solid fa-circle-check" style="color:${d.concluida==='Sim'?'#1DB954':'#F4A900'}"></i> ${d.concluida || '—'}
+              ${d.agendada ? '&nbsp;·&nbsp;<i class="fa-solid fa-calendar-check" style="color:var(--sky)"></i> <span style="color:var(--sky);font-size:11px">Agendada para amanhã</span>' : ''}
             </div>
           </div>
-          <button class="demanda-remove" onclick="Checklist.removeDemanda(${i})" title="Remover">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+          <div style="display:flex;gap:6px;align-items:center">
+            ${d.concluida !== 'Sim' && !d.agendada ? `<button class="btn-agenda-amanha" onclick="Checklist.agendarParaAmanha(${i})" title="Agendar para amanhã"><i class="fa-solid fa-calendar-plus"></i> Agendar para amanhã</button>` : ''}
+            <button class="demanda-remove" onclick="Checklist.removeDemanda(${i})" title="Remover">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>`).join('');
     }
     $('demandasList').innerHTML = listHtml;
@@ -524,6 +528,34 @@ const Checklist = {
   removeDemanda(idx) {
     this.demandas.splice(idx, 1);
     this.renderDemandasScreen();
+  },
+
+  async agendarParaAmanha(idx) {
+    const d = this.demandas[idx];
+    const profile = UserProfile.get();
+    try {
+      const res = await fetch('/api/planning/add-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo:      d.descricao || 'Demanda pendente',
+          descricao:   `Solicitante: ${d.solicitante || '—'} | Depto: ${d.departamento || '—'}`,
+          responsavel: profile ? profile.name : '',
+          solicitante: d.solicitante || '',
+          departamento: d.departamento || '',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.demandas[idx].agendada = true;
+        this.renderDemandasScreen();
+        showToast('Demanda agendada para o planejamento de amanhã!', 'success');
+      } else {
+        showToast('Erro ao agendar: ' + (data.error || 'tente novamente'), 'error');
+      }
+    } catch (e) {
+      showToast('Erro ao agendar demanda.', 'error');
+    }
   },
 
   finishDemandas() {

@@ -182,6 +182,35 @@ def api_next_day():
     return jsonify(proposal)
 
 
+@app.route("/api/planning/add-pending", methods=["POST"])
+def api_add_pending():
+    data = request.get_json()
+    today = date.today()
+    next_day = today + timedelta(days=1)
+    if next_day.weekday() >= 5:
+        next_day = today + timedelta(days=7 - today.weekday())
+    dias_pt = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado","Domingo"]
+    try:
+        save_checklist([{
+            "data":           next_day.strftime("%d/%m/%Y"),
+            "dia_semana":     dias_pt[next_day.weekday()],
+            "titulo":         data.get("titulo", "Demanda pendente"),
+            "horario_inicio": "",
+            "horario_fim":    "",
+            "tempo_previsto": 0,
+            "descricao":      data.get("descricao", ""),
+            "responsavel":    data.get("responsavel", ""),
+            "origem":         "Agendado",
+            "status":         "Pendente",
+            "prioridade":     "Alta",
+            "solicitante_extra": data.get("solicitante", ""),
+            "categoria_extra":   data.get("departamento", ""),
+        }])
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/planning/apply", methods=["POST"])
 def api_apply_planning():
     return jsonify({"success": True})

@@ -248,6 +248,27 @@ def propose_next_day_schedule(outlook_events=None):
         next_day = today + timedelta(days=7 - today.weekday())
 
     schedule = []
+
+    # Itens pendentes agendados via checklist
+    next_day_str = next_day.strftime("%d/%m/%Y")
+    try:
+        all_records = get_all_data()
+        pending = [r for r in all_records
+                   if r.get("data") == next_day_str and r.get("origem") == "Agendado"]
+        for r in pending:
+            schedule.append({
+                "titulo":         r.get("titulo", "Demanda pendente"),
+                "horario_inicio": "",
+                "horario_fim":    "",
+                "tempo_previsto": int(r.get("tempo_previsto") or 60),
+                "origem":         "Agendado",
+                "prioridade":     "Alta",
+                "tipo":           "pendente",
+                "descricao":      r.get("descricao", ""),
+            })
+    except Exception:
+        pass
+
     for ev in (outlook_events or []):
         schedule.append({
             "titulo":         ev.get("titulo", "Evento"),

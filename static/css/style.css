@@ -358,6 +358,12 @@ body {
   font-size: 16px; padding: 4px; transition: color .2s;
 }
 .demanda-remove:hover { color: #E53935; }
+.btn-agenda-amanha {
+  background: none; border: 1px solid var(--sky); color: var(--sky);
+  border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all .2s; white-space: nowrap;
+}
+.btn-agenda-amanha:hover { background: var(--sky); color: white; }
 .demanda-form-box {
   background: #f8fbff; border: 1px dashed var(--sky);
   border-radius: 0 0 16px 16px; padding: 20px 24px;
