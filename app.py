@@ -86,11 +86,20 @@ def api_today():
         titulo = r.get("titulo", "").strip().lower()
         if titulo:
             respostas_salvas[titulo] = {
-                "status":        r.get("status", ""),
-                "houve_atraso":  r.get("houve_atraso", ""),
-                "motivo_atraso": r.get("motivo_atraso", ""),
-                "solicitante_extra": r.get("solicitante_extra", ""),
-                "observacoes":   r.get("observacoes", ""),
+                "status":               r.get("status", ""),
+                "houve_atraso":         r.get("houve_atraso", ""),
+                "motivo_atraso":        r.get("motivo_atraso", ""),
+                "tempo_executado":      r.get("tempo_executado", ""),
+                "tempo_excedente":      r.get("tempo_excedente", ""),
+                "reagendado":           r.get("reagendado", ""),
+                "prioridade":           r.get("prioridade", ""),
+                "atividade_extra":      r.get("atividade_extra", ""),
+                "categoria_extra":      r.get("categoria_extra", ""),
+                "nome_atividade_extra": r.get("nome_atividade_extra", ""),
+                "tempo_extra_label":    r.get("tempo_extra_label", ""),
+                "tempo_extra":          r.get("tempo_extra", 0),
+                "solicitante_extra":    r.get("solicitante_extra", ""),
+                "observacoes":          r.get("observacoes", ""),
             }
 
     # Atividades do Excel do dia que não estão no Outlook

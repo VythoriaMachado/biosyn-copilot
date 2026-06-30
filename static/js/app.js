@@ -224,11 +224,20 @@ const Checklist = {
         const saved = respostas[key];
         if (saved && saved.status) {
           return {
-            status:             saved.status,
-            houve_atraso:       saved.houve_atraso || 'Não',
-            motivo_atraso:      saved.motivo_atraso || '',
-            solicitante_extra:  saved.solicitante_extra || '',
-            observacoes:        saved.observacoes || '',
+            status:               saved.status,
+            houve_atraso:         saved.houve_atraso || 'Não',
+            motivo_atraso:        saved.motivo_atraso || '',
+            tempo_executado:      saved.tempo_executado || '',
+            tempo_excedente:      saved.tempo_excedente || '',
+            reagendado:           saved.reagendado || 'Não',
+            prioridade:           saved.prioridade || '',
+            atividade_extra:      saved.atividade_extra || 'Não',
+            categoria_extra:      saved.categoria_extra || '',
+            nome_atividade_extra: saved.nome_atividade_extra || '',
+            tempo_extra_label:    saved.tempo_extra_label || '',
+            tempo_extra:          saved.tempo_extra || 0,
+            solicitante_extra:    saved.solicitante_extra || '',
+            observacoes:          saved.observacoes || '',
           };
         }
         return {};
