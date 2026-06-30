@@ -218,7 +218,7 @@ const Checklist = {
         return;
       }
 
-      // Pré-preencher respostas já salvas no Excel
+      // Pré-preencher respostas já salvas no banco
       this.answers = this.activities.map(a => {
         const key = (a.titulo || '').trim().toLowerCase();
         const saved = respostas[key];
@@ -234,7 +234,18 @@ const Checklist = {
         return {};
       });
 
-      this.goToActivity(0);
+      // Restaurar rascunho local (respostas em progresso não salvas no banco)
+      if (!this.historyMode) {
+        const draft = this._loadDraft();
+        if (draft && draft.answers && draft.answers.length === this.activities.length) {
+          // Mescla: rascunho tem prioridade sobre o banco (é mais recente)
+          this.answers = draft.answers;
+          this.current = draft.current || 0;
+          $('checklistDateLabel').innerHTML += ' <span style="color:#099CD6;font-size:11px">↩ rascunho recuperado</span>';
+        }
+      }
+
+      this.goToActivity(this.current || 0);
     } catch(e) {
       $('checklistEmpty').style.display = 'block';
     }
@@ -419,6 +430,50 @@ const Checklist = {
       const map = { '15 min': 15, '30 min': 30, '45 min': 45, '60 min': 60, 'Mais de 1h': 75 };
       this.answers[this.current]['tempo_extra'] = map[val] || 30;
     }
+
+    // Re-render se campo condicional mudou
+    if (field === 'tempo_executado') {
+      this.renderActivity();
+    }
+
+    this._autosave();
+  },
+
+  _autosaveKey() {
+    const profile = UserProfile.get();
+    const user = profile ? profile.name : 'guest';
+    const date = this.checklistDate || 'nodate';
+    return `biosyn_checklist_draft_${user}_${date}`;
+  },
+
+  _autosave() {
+    if (this.historyMode) return; // não autosalva em modo histórico
+    try {
+      localStorage.setItem(this._autosaveKey(), JSON.stringify({
+        answers: this.answers,
+        current: this.current,
+        saved_at: new Date().toISOString(),
+      }));
+    } catch {}
+  },
+
+  _loadDraft() {
+    try {
+      const raw = localStorage.getItem(this._autosaveKey());
+      if (!raw) return null;
+      const draft = JSON.parse(raw);
+      // Descarta rascunhos com mais de 2 dias
+      const age = Date.now() - new Date(draft.saved_at).getTime();
+      if (age > 2 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(this._autosaveKey());
+        return null;
+      }
+      return draft;
+    } catch { return null; }
+  },
+
+  _clearDraft() {
+    try { localStorage.removeItem(this._autosaveKey()); } catch {}
   },
 
   prev() {
@@ -740,6 +795,7 @@ const Checklist = {
       const json = await res.json();
       if (json.success) {
         ChecklistHistory._adminUnlocked = false;
+        this._clearDraft();
         showToast(`✓ ${json.saved} atividades salvas com sucesso!`, 'success');
         if (this.historyMode) {
           ChecklistHistory.clear();
