@@ -62,10 +62,13 @@ def api_today():
     # Buscar registros já salvos (usa o handler correto: SQLite na nuvem, Excel local)
     target_str = target.strftime("%d/%m/%Y")
     all_records = get_all_data()
-    excel_dia = [r for r in all_records if r.get("data", "") == target_str]
+    usuario_lower = usuario.strip().lower() if usuario else ""
+    excel_dia = [r for r in all_records if r.get("data", "") == target_str
+                 and (not usuario_lower or r.get("responsavel", "").strip().lower() == usuario_lower)]
 
-    # Para o dashboard: pendências são do dia de hoje
-    excel_hoje = [r for r in all_records if r.get("data", "") == date.today().strftime("%d/%m/%Y")]
+    # Para o dashboard: pendências são do dia de hoje (filtradas por usuário)
+    excel_hoje = [r for r in all_records if r.get("data", "") == date.today().strftime("%d/%m/%Y")
+                  and (not usuario_lower or r.get("responsavel", "").strip().lower() == usuario_lower)]
     pendencias = [a for a in excel_hoje if a.get("status") in ["Parcial", "Não realizado"]]
 
     # Montar mapa de respostas já salvas (por título)
