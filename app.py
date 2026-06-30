@@ -155,15 +155,17 @@ def api_auth_connect():
 
 @app.route("/api/dashboard/weekly")
 def api_weekly():
-    stats = get_weekly_data()
-    insights = generate_insights(days=7)
+    usuario = request.args.get("usuario", "")
+    stats = get_weekly_data(usuario=usuario)
+    insights = generate_insights(days=7, usuario=usuario)
     return jsonify({**stats, "insights": insights})
 
 
 @app.route("/api/dashboard/weekly/export")
 def api_weekly_export():
-    stats = get_weekly_data()
-    insights = generate_insights(days=7)
+    usuario = request.args.get("usuario", "")
+    stats = get_weekly_data(usuario=usuario)
+    insights = generate_insights(days=7, usuario=usuario)
     html_path = generate_weekly_html(stats, insights)
     if html_path and os.path.exists(html_path):
         subprocess.Popen(["start", "", html_path], shell=True)
@@ -176,8 +178,9 @@ def api_weekly_export():
 @app.route("/api/managerial")
 def api_managerial():
     period = request.args.get("period", "month")
-    data = get_managerial_data(period=period)
-    insights = generate_insights(days={"month": 30, "quarter": 90, "year": 365}.get(period, 30))
+    usuario = request.args.get("usuario", "")
+    data = get_managerial_data(period=period, usuario=usuario)
+    insights = generate_insights(days={"month": 30, "quarter": 90, "year": 365}.get(period, 30), usuario=usuario)
     return jsonify({**data, "insights": insights})
 
 
@@ -230,7 +233,8 @@ def api_apply_planning():
 @app.route("/api/insights")
 def api_insights():
     days = int(request.args.get("days", 30))
-    return jsonify(generate_insights(days=days))
+    usuario = request.args.get("usuario", "")
+    return jsonify(generate_insights(days=days, usuario=usuario))
 
 
 # ── HISTORY ─────────────────────────────────────────────────────────────────

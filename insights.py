@@ -4,8 +4,13 @@ import pandas as pd
 
 if os.environ.get("RENDER"):
     from db_handler import get_all_data as _get_all
-    def _get_historical(days):
+    def _get_historical(days, usuario=None):
         records = _get_all()
+        if not records:
+            return pd.DataFrame()
+        if usuario:
+            u = usuario.strip().lower()
+            records = [r for r in records if r.get("responsavel", "").strip().lower() == u]
         if not records:
             return pd.DataFrame()
         df = pd.DataFrame(records)
@@ -13,11 +18,13 @@ if os.environ.get("RENDER"):
         cutoff = date.today() - timedelta(days=days)
         return df[df["Data_dt"].dt.date >= cutoff]
 else:
-    from excel_handler import get_historical_data as _get_historical
+    def _get_historical(days, usuario=None):
+        from excel_handler import get_historical_data
+        return get_historical_data(days=days)
 
 
-def generate_insights(days=30):
-    df = _get_historical(days=days)
+def generate_insights(days=30, usuario=None):
+    df = _get_historical(days=days, usuario=usuario)
     if df is None or df.empty:
         return _default_insights()
 

@@ -183,7 +183,7 @@ else:
 
 # Funções compartilhadas (independente do backend)
 
-def get_weekly_data(reference_date=None):
+def get_weekly_data(reference_date=None, usuario=None):
     import pandas as pd
     if reference_date is None:
         reference_date = date.today()
@@ -191,6 +191,9 @@ def get_weekly_data(reference_date=None):
     end = reference_date
 
     records = get_all_data()
+    if usuario:
+        u = usuario.strip().lower()
+        records = [r for r in records if r.get("responsavel", "").strip().lower() == u]
     if not records:
         return _empty_weekly()
 
@@ -282,10 +285,14 @@ def _empty_weekly():
     }
 
 
-def get_managerial_data(period="month"):
+def get_managerial_data(period="month", usuario=None):
     days = {"month": 30, "quarter": 90, "year": 365}.get(period, 30)
     cutoff = date.today() - timedelta(days=days)
     records = get_all_data()
+
+    if usuario:
+        u = usuario.strip().lower()
+        records = [r for r in records if r.get("responsavel", "").strip().lower() == u]
 
     def _dt(s):
         try:
