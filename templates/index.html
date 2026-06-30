@@ -67,6 +67,9 @@
     <a href="#" class="nav-item" data-view="insights">
       <i class="fa-solid fa-lightbulb"></i><span>Insights IA</span>
     </a>
+    <a href="#" class="nav-item nav-item-gestor" data-view="gestor" onclick="AdminMode.toggle(); return false;" title="Acesso Gestor — visualizar dados da equipe">
+      <i class="fa-solid fa-users-gear"></i><span>Modo Gestor</span>
+    </a>
   </nav>
   <div class="sidebar-footer">
     <div class="user-info" id="sidebarUserInfo" style="cursor:pointer" onclick="UserProfile.showEdit()" title="Alterar perfil">
@@ -81,6 +84,41 @@
 
 <!-- MAIN -->
 <main class="main-content">
+
+  <!-- BANNER MODO GESTOR -->
+  <div id="gestorBanner" style="display:none">
+    <div class="gestor-banner-inner">
+      <div class="gestor-banner-left">
+        <i class="fa-solid fa-users-gear"></i>
+        <strong>Modo Gestor ativo</strong>
+        <span>— visualizando dados de toda a equipe</span>
+      </div>
+      <div class="gestor-banner-right">
+        <label style="font-size:12px;font-weight:600">Filtrar por pessoa:</label>
+        <select id="gestorUserFilter" class="gestor-filter-select" onchange="AdminMode.applyFilter()">
+          <option value="">Toda a equipe</option>
+        </select>
+        <button class="gestor-exit-btn" onclick="AdminMode.exit()">
+          <i class="fa-solid fa-xmark"></i> Sair do Modo Gestor
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PIN GESTOR -->
+  <div id="gestorPinModal" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <h3 style="margin-bottom:8px"><i class="fa-solid fa-users-gear" style="color:var(--sky)"></i> Acesso Gestor</h3>
+      <p style="font-size:13px;opacity:.7;margin-bottom:16px">Digite o PIN de gestor para visualizar os dados de toda a equipe.</p>
+      <input type="password" id="gestorPinInput" class="form-input" placeholder="PIN" maxlength="10"
+             style="text-align:center;letter-spacing:6px;font-size:20px"
+             onkeydown="if(event.key==='Enter') AdminMode.confirmPin()">
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn-secondary" onclick="AdminMode.closePin()"><i class="fa-solid fa-xmark"></i> Cancelar</button>
+        <button class="btn-primary" onclick="AdminMode.confirmPin()"><i class="fa-solid fa-unlock"></i> Entrar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- TOP BAR -->
   <header class="topbar">

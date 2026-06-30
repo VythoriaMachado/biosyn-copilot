@@ -10,7 +10,14 @@ function API(url) {
   const profile = UserProfile.get();
   if (profile) {
     const sep = url.includes('?') ? '&' : '?';
-    const params = new URLSearchParams({ usuario: profile.name, ics_url: profile.ics_url });
+    // No modo gestor, omite usuario para retornar dados de todos
+    const params = AdminMode.active
+      ? new URLSearchParams({ ics_url: profile.ics_url })
+      : new URLSearchParams({ usuario: profile.name, ics_url: profile.ics_url });
+    // Se gestor filtrou por uma pessoa específica
+    if (AdminMode.active && AdminMode.filtroUsuario) {
+      params.set('usuario', AdminMode.filtroUsuario);
+    }
     url = url + sep + params.toString();
   }
   return fetch(url).then(r => r.json());
@@ -1167,6 +1174,84 @@ const ChecklistHistory = {
     $('historyDatePicker').value = '';
     this._adminUnlocked = false;
     Checklist.init();
+  },
+};
+
+// ── ADMIN MODE (GESTOR) ──────────────────────────────────────────────────
+
+const AdminMode = {
+  active: false,
+  filtroUsuario: '',
+  ADMIN_PIN: '0768',
+
+  toggle() {
+    if (this.active) {
+      this.exit();
+    } else {
+      this._requestPin();
+    }
+  },
+
+  _requestPin() {
+    $('gestorPinInput').value = '';
+    $('gestorPinModal').style.display = 'flex';
+    setTimeout(() => $('gestorPinInput').focus(), 100);
+  },
+
+  confirmPin() {
+    const pin = $('gestorPinInput').value.trim();
+    if (pin !== this.ADMIN_PIN) {
+      showToast('PIN incorreto.', 'error');
+      $('gestorPinInput').value = '';
+      return;
+    }
+    $('gestorPinModal').style.display = 'none';
+    this.enter();
+  },
+
+  closePin() {
+    $('gestorPinModal').style.display = 'none';
+  },
+
+  enter() {
+    this.active = true;
+    this.filtroUsuario = '';
+    // Banner de modo gestor
+    $('gestorBanner').style.display = 'flex';
+    // Atualizar nav item
+    const navGestor = document.querySelector('.nav-item[data-view="gestor"]');
+    if (navGestor) navGestor.classList.add('gestor-active');
+    showToast('Modo Gestor ativado — visualizando dados de toda a equipe.', 'success');
+    // Carregar usuários disponíveis para filtro
+    this._loadUsers();
+    // Recarregar view atual com dados de todos
+    App.switchView(App.currentView);
+  },
+
+  exit() {
+    this.active = false;
+    this.filtroUsuario = '';
+    $('gestorBanner').style.display = 'none';
+    const navGestor = document.querySelector('.nav-item[data-view="gestor"]');
+    if (navGestor) navGestor.classList.remove('gestor-active');
+    showToast('Modo Gestor desativado.', '');
+    App.switchView(App.currentView);
+  },
+
+  async _loadUsers() {
+    try {
+      const data = await fetch('/api/history').then(r => r.json());
+      const records = data.records || [];
+      const users = [...new Set(records.map(r => r.responsavel).filter(Boolean))].sort();
+      const sel = $('gestorUserFilter');
+      sel.innerHTML = '<option value="">Toda a equipe</option>' +
+        users.map(u => `<option value="${u}">${u}</option>`).join('');
+    } catch {}
+  },
+
+  applyFilter() {
+    this.filtroUsuario = $('gestorUserFilter').value;
+    App.switchView(App.currentView);
   },
 };
 

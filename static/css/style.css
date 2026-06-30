@@ -446,6 +446,50 @@ body {
 .demandas-empty i { font-size: 28px; margin-bottom: 8px; display: block; }
 .demandas-empty p { font-size: 13px; }
 
+/* ── MODO GESTOR ── */
+.nav-item-gestor {
+  border-top: 1px solid rgba(255,255,255,.12);
+  margin-top: 6px;
+  padding-top: 10px;
+  color: rgba(255,255,255,.6) !important;
+}
+.nav-item-gestor:hover { color: white !important; background: rgba(9,156,214,.15) !important; }
+.nav-item-gestor.gestor-active {
+  background: rgba(9,156,214,.25) !important;
+  color: #5dd4f7 !important;
+  border-left: 3px solid #5dd4f7;
+}
+
+#gestorBanner {
+  background: linear-gradient(90deg, #002468 0%, #0a3a7a 100%);
+  color: white; padding: 10px 24px; position: sticky; top: 0; z-index: 90;
+  border-bottom: 2px solid var(--sky);
+}
+.gestor-banner-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.gestor-banner-left {
+  display: flex; align-items: center; gap: 10px; font-size: 13px;
+}
+.gestor-banner-left i { color: var(--sky); font-size: 16px; }
+.gestor-banner-right {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.gestor-filter-select {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  color: white; padding: 5px 10px; border-radius: 8px; font-size: 12px;
+  cursor: pointer; min-width: 160px;
+}
+.gestor-filter-select option { background: #002468; color: white; }
+.gestor-exit-btn {
+  background: rgba(229,57,53,.2); border: 1px solid rgba(229,57,53,.5);
+  color: #ff8a80; padding: 5px 12px; border-radius: 8px; font-size: 12px;
+  font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: all .2s;
+}
+.gestor-exit-btn:hover { background: rgba(229,57,53,.35); color: white; }
+
 /* ─── PLANNING ─────────────────────────────────────────────────────────── */
 .planning-header {
   background: white; border-radius: var(--radius); padding: 20px 24px;
