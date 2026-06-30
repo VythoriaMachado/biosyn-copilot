@@ -174,15 +174,24 @@ const Checklist = {
     $('checklistDemandas').style.display = 'none';
   },
 
-  async init() {
+  historyMode: false,
+  historyDate: null,
+
+  async init(forceDate) {
     this.current = 0;
     this.answers = [];
     this.demandas = [];
     this.editingDemanda = null;
+    this.historyMode = !!forceDate;
+    this.historyDate = forceDate || null;
     this._hideAll();
 
+    const url = forceDate
+      ? `/api/today?checklist=1&force_date=${encodeURIComponent(forceDate)}`
+      : '/api/today?checklist=1';
+
     try {
-      const data = await API('/api/today?checklist=1');
+      const data = await API(url);
       this.checklistDate = data.data;
       this.checklistDiaSemana = data.dia_semana;
       this.activities = data.atividades || [];
@@ -190,8 +199,10 @@ const Checklist = {
 
       // Exibir banner com a data do checklist
       if (this.checklistDate) {
-        const jaPreench = data.ja_preenchido ? ' <span style="color:#1DB954;font-size:11px">(respostas carregadas)</span>' : '';
-        $('checklistDateLabel').innerHTML = `${this.checklistDate} — ${this.checklistDiaSemana}${jaPreench}`;
+        const modeLabel = this.historyMode
+          ? ' <span style="color:#F4A900;font-size:11px">✏ modo edição de histórico</span>'
+          : (data.ja_preenchido ? ' <span style="color:#1DB954;font-size:11px">(respostas carregadas)</span>' : '');
+        $('checklistDateLabel').innerHTML = `${this.checklistDate} — ${this.checklistDiaSemana}${modeLabel}`;
         $('checklistDateBanner').style.display = 'block';
       }
 
@@ -621,6 +632,18 @@ const Checklist = {
   },
 
   async save() {
+    // Modo histórico: pede PIN antes de salvar
+    if (this.historyMode && !ChecklistHistory._adminUnlocked) {
+      ChecklistHistory._pinCallback = () => this._doSave();
+      $('adminPinInput').value = '';
+      $('adminPinModal').style.display = 'flex';
+      setTimeout(() => $('adminPinInput').focus(), 100);
+      return;
+    }
+    this._doSave();
+  },
+
+  async _doSave() {
     const todayStr = this.checklistDate || new Date().toLocaleDateString('pt-BR');
     const days = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
     const diaSemana = this.checklistDiaSemana || days[new Date().getDay()];
@@ -678,6 +701,16 @@ const Checklist = {
     });
 
     try {
+      // Modo histórico: apaga registros antigos antes de re-salvar
+      if (this.historyMode) {
+        const profile = UserProfile.get();
+        await fetch('/api/history/delete-date', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: todayStr, usuario: profile ? profile.name : '' }),
+        });
+      }
+
       const res = await fetch('/api/checklist/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -685,8 +718,13 @@ const Checklist = {
       });
       const json = await res.json();
       if (json.success) {
+        ChecklistHistory._adminUnlocked = false;
         showToast(`✓ ${json.saved} atividades salvas com sucesso!`, 'success');
-        setTimeout(() => App.switchView('planning'), 1500);
+        if (this.historyMode) {
+          ChecklistHistory.clear();
+        } else {
+          setTimeout(() => App.switchView('planning'), 1500);
+        }
       } else {
         showToast(json.error || 'Erro ao salvar.', 'error');
       }
@@ -1096,89 +1134,14 @@ const ChecklistHistory = {
   _pinCallback: null,
   _adminUnlocked: false,
 
-  async load(dateValue) {
+  load(dateValue) {
     if (!dateValue) return;
-    // Converter de YYYY-MM-DD para DD/MM/YYYY
     const [y, m, d] = dateValue.split('-');
     const dataBR = `${d}/${m}/${y}`;
-    const profile = UserProfile.get();
-    const usuario = profile ? profile.name : '';
-
-    const panel = $('historyPanel');
-    const checklist = $('checklistDateBanner').parentElement;
-
-    panel.style.display = 'block';
+    $('historyPanel').style.display = 'none';
     $('btnHistoryClear').style.display = 'flex';
-    // Ocultar checklist normal
-    ['checklistCard','checklistSummary','checklistEmpty','checklistDemandas','checklistDateBanner'].forEach(id => {
-      const el = $(id); if (el) el.style.display = 'none';
-    });
-    $('progressFill').style.width = '0%';
-    $('progressText').textContent = '';
-
-    panel.innerHTML = `<div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando registros de ${dataBR}...</div>`;
-
-    try {
-      const res = await fetch(`/api/history/date?data=${encodeURIComponent(dataBR)}&usuario=${encodeURIComponent(usuario)}`);
-      const data = await res.json();
-      this._render(data.records || [], dataBR);
-    } catch(e) {
-      panel.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>Erro ao carregar histórico</h3></div>`;
-    }
-  },
-
-  _render(records, dataBR) {
-    const panel = $('historyPanel');
-    if (!records.length) {
-      panel.innerHTML = `<div class="empty-state"><i class="fa-solid fa-inbox"></i><h3>Nenhum registro para ${dataBR}</h3><p>O checklist desta data não foi preenchido.</p></div>`;
-      return;
-    }
-    const statusBadge = s => {
-      if (s === 'Concluído') return `<span class="history-status-badge badge-concluido">✓ Concluído</span>`;
-      if (s === 'Parcial')   return `<span class="history-status-badge badge-parcial">~ Parcial</span>`;
-      if (s === 'Pendente')  return `<span class="history-status-badge badge-pendente">⏳ Pendente</span>`;
-      return `<span class="history-status-badge badge-nao">✗ Não realizado</span>`;
-    };
-    let html = `<div class="history-panel-wrap">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h3 style="font-size:16px;color:var(--navy)"><i class="fa-solid fa-calendar-check" style="color:var(--sky)"></i> Registros de ${dataBR}</h3>
-        <span style="font-size:12px;color:var(--gray-600)">${records.length} atividade(s)</span>
-      </div>`;
-    records.forEach((r, i) => {
-      html += `
-      <div class="history-record-card" id="hcard-${i}">
-        <div class="history-record-title">${r.titulo || '—'}</div>
-        <div class="history-record-meta">
-          ${r.horario_inicio ? `<span><i class="fa-solid fa-clock"></i> ${r.horario_inicio}–${r.horario_fim}</span>` : ''}
-          <span><i class="fa-solid fa-tag"></i> ${r.origem || '—'}</span>
-          <span><i class="fa-solid fa-user"></i> ${r.responsavel || '—'}</span>
-        </div>
-        <div id="hcard-view-${i}">
-          ${statusBadge(r.status)}
-          ${r.houve_atraso === 'Sim' ? `<div style="margin-top:6px;font-size:12px;color:#E53935"><i class="fa-solid fa-clock-rotate-left"></i> Atraso: ${r.motivo_atraso || '—'}</div>` : ''}
-          ${r.observacoes ? `<div style="margin-top:6px;font-size:12px;color:var(--gray-600)"><i class="fa-solid fa-note-sticky"></i> ${r.observacoes}</div>` : ''}
-          <div class="history-edit-row">
-            <button class="history-edit-btn" onclick="ChecklistHistory.requestEdit(${i}, ${JSON.stringify(r).replace(/"/g,'&quot;')})">
-              <i class="fa-solid fa-pen"></i> Editar
-            </button>
-          </div>
-        </div>
-        <div id="hcard-edit-${i}" style="display:none"></div>
-      </div>`;
-    });
-    html += `</div>`;
-    panel.innerHTML = html;
-  },
-
-  requestEdit(idx, record) {
-    if (this._adminUnlocked) {
-      this._openEdit(idx, record);
-      return;
-    }
-    this._pinCallback = () => this._openEdit(idx, record);
-    $('adminPinInput').value = '';
-    $('adminPinModal').style.display = 'flex';
-    setTimeout(() => $('adminPinInput').focus(), 100);
+    // Abre o checklist completo para a data selecionada
+    Checklist.init(dataBR);
   },
 
   confirmPin() {
@@ -1198,82 +1161,11 @@ const ChecklistHistory = {
     this._pinCallback = null;
   },
 
-  _openEdit(idx, r) {
-    $(`hcard-${idx}`).classList.add('editing');
-    $(`hcard-view-${idx}`).style.display = 'none';
-    const sel = (field, options, current) =>
-      `<div class="history-field-group">
-        <div class="history-field-label">${field}</div>
-        <div class="btn-group" style="flex-wrap:wrap;gap:6px">
-          ${options.map(v => `<button class="opt-btn ${v===current?'selected':''}" onclick="this.parentElement.querySelectorAll('.opt-btn').forEach(b=>b.className='opt-btn');this.classList.add('selected')" data-val="${v}">${v}</button>`).join('')}
-        </div>
-      </div>`;
-    $(`hcard-edit-${idx}`).style.display = 'block';
-    $(`hcard-edit-${idx}`).innerHTML = `
-      ${sel('Status', ['Concluído','Parcial','Não realizado'], r.status)}
-      ${sel('Houve atraso?', ['Não','Sim'], r.houve_atraso)}
-      <div class="history-field-group">
-        <div class="history-field-label">Observações</div>
-        <input class="form-input" id="hobs-${idx}" value="${(r.observacoes||'').replace(/"/g,'&quot;')}" placeholder="Observações...">
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="history-save-btn" onclick="ChecklistHistory.saveEdit(${idx}, ${r.id})">
-          <i class="fa-solid fa-floppy-disk"></i> Salvar
-        </button>
-        <button class="history-cancel-btn" onclick="ChecklistHistory.cancelEdit(${idx})">Cancelar</button>
-      </div>`;
-  },
-
-  async saveEdit(idx, recordId) {
-    const card = $(`hcard-edit-${idx}`);
-    const getSelected = label => {
-      const groups = card.querySelectorAll('.btn-group');
-      for (const g of groups) {
-        const sel = g.querySelector('.opt-btn.selected');
-        if (sel) {
-          // Check which group by position
-        }
-      }
-      // simpler: get all selected btns
-      const btns = card.querySelectorAll('.opt-btn.selected');
-      return Array.from(btns).map(b => b.dataset.val);
-    };
-    const selected = getSelected();
-    const status      = selected[0] || '';
-    const houve_atraso = selected[1] || '';
-    const observacoes = $(`hobs-${idx}`).value;
-
-    try {
-      const res = await fetch('/api/history/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: recordId, status, houve_atraso, observacoes }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Registro atualizado com sucesso!', 'success');
-        // Reload
-        const picker = $('historyDatePicker');
-        if (picker.value) this.load(picker.value);
-      } else {
-        showToast('Erro ao salvar: ' + (data.error || ''), 'error');
-      }
-    } catch(e) {
-      showToast('Erro ao salvar.', 'error');
-    }
-  },
-
-  cancelEdit(idx) {
-    $(`hcard-${idx}`).classList.remove('editing');
-    $(`hcard-view-${idx}`).style.display = 'block';
-    $(`hcard-edit-${idx}`).style.display = 'none';
-  },
-
   clear() {
     $('historyPanel').style.display = 'none';
     $('btnHistoryClear').style.display = 'none';
     $('historyDatePicker').value = '';
-    // Restaurar checklist normal
+    this._adminUnlocked = false;
     Checklist.init();
   },
 };

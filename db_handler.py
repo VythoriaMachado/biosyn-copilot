@@ -88,6 +88,16 @@ if SUPABASE_URL and SUPABASE_KEY:
             print(f"[DB] update_checklist_entry erro: {e}")
             raise RuntimeError(f"Erro ao atualizar registro: {e}")
 
+    def delete_by_date_user(date_str, usuario):
+        try:
+            q = _sb.table("checklist").delete().eq("data", date_str)
+            if usuario:
+                q = q.eq("responsavel", usuario)
+            q.execute()
+        except Exception as e:
+            print(f"[DB] delete_by_date_user erro: {e}")
+            raise RuntimeError(f"Erro ao deletar registros: {e}")
+
 else:
     # Fallback SQLite para desenvolvimento local
     import sqlite3
@@ -162,6 +172,13 @@ else:
                 "UPDATE checklist SET status=?, houve_atraso=?, observacoes=? WHERE id=?",
                 (status, houve_atraso, observacoes, record_id)
             )
+
+    def delete_by_date_user(date_str, usuario):
+        with _conn() as c:
+            if usuario:
+                c.execute("DELETE FROM checklist WHERE data=? AND responsavel=?", (date_str, usuario))
+            else:
+                c.execute("DELETE FROM checklist WHERE data=?", (date_str,))
 
 
 # Funções compartilhadas (independente do backend)

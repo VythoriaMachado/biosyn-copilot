@@ -38,12 +38,18 @@ def api_today():
     ics_url = request.args.get("ics_url") or None
     usuario = request.args.get("usuario") or "Usuário"
 
-    target = date.today() - timedelta(days=1) if is_checklist else date.today()
-
-    # Pular fins de semana no checklist (sexta → segunda anterior não faz sentido)
-    if is_checklist and target.weekday() >= 5:
-        # Voltar para sexta-feira anterior
-        target = target - timedelta(days=target.weekday() - 4)
+    force_date = request.args.get("force_date") or None
+    if force_date:
+        try:
+            target = datetime.strptime(force_date, "%d/%m/%Y").date()
+        except Exception:
+            target = date.today() - timedelta(days=1)
+    elif is_checklist:
+        target = date.today() - timedelta(days=1)
+        if target.weekday() >= 5:
+            target = target - timedelta(days=target.weekday() - 4)
+    else:
+        target = date.today()
 
     all_activities = get_next_day_events(target_date=target, ics_url=ics_url) if is_checklist else get_today_outlook_events(ics_url=ics_url)
 
@@ -241,6 +247,21 @@ def api_history_date():
     if usuario:
         records = [r for r in records if r.get("responsavel", "").strip().lower() == usuario.strip().lower()]
     return jsonify({"records": records, "total": len(records)})
+
+
+@app.route("/api/history/delete-date", methods=["POST"])
+def api_history_delete_date():
+    data = request.get_json()
+    date_str = data.get("data", "")
+    usuario  = data.get("usuario", "")
+    if not date_str:
+        return jsonify({"error": "Data não informada"}), 400
+    try:
+        from db_handler import delete_by_date_user
+        delete_by_date_user(date_str, usuario)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/history/update", methods=["POST"])
