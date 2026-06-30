@@ -204,8 +204,53 @@ def get_weekly_data(reference_date=None):
     concluidas = len(week_df[week_df["status"] == "Concluído"])
     parciais = len(week_df[week_df["status"] == "Parcial"])
     nao_real = len(week_df[week_df["status"] == "Não realizado"])
-    reunioes = len(week_df[week_df["titulo"].str.contains("reunião|meeting|call", case=False, na=False)])
+    reunioes = len(week_df[week_df["titulo"].str.contains("reunião|meeting|call|sync|alinhamento", case=False, na=False)])
     taxa = round((concluidas / total) * 100, 1) if total > 0 else 0
+
+    # Horas planejadas: soma de tempo_previsto (minutos → horas)
+    horas_previstas = round(week_df["tempo_previsto"].apply(lambda x: int(x) if str(x).isdigit() else 0).sum() / 60, 1)
+
+    # Horas executadas: estimativa baseada em tempo_executado
+    _exec_map = {
+        "Menos de 15 minutos": 10,
+        "15-30 minutos": 22,
+        "30-60 minutos": 45,
+        "Igual ao planejado": None,   # usa tempo_previsto
+        "Acima do planejado": None,   # usa tempo_previsto * 1.2
+    }
+    horas_exec_min = 0
+    for _, row in week_df.iterrows():
+        te = str(row.get("tempo_executado", ""))
+        tp = int(row.get("tempo_previsto") or 0)
+        if te in _exec_map and _exec_map[te] is not None:
+            horas_exec_min += _exec_map[te]
+        elif te == "Igual ao planejado":
+            horas_exec_min += tp
+        elif te == "Acima do planejado":
+            horas_exec_min += int(tp * 1.2)
+        elif row.get("status") == "Concluído":
+            horas_exec_min += tp
+    horas_executadas = round(horas_exec_min / 60, 1)
+
+    # Extras
+    extras_df = week_df[week_df["atividade_extra"] == "Sim"] if "atividade_extra" in week_df.columns else week_df.iloc[0:0]
+    horas_extras = round(extras_df["tempo_extra"].apply(lambda x: int(x) if str(x).isdigit() else 0).sum() / 60, 1)
+
+    # Motivos de atraso
+    motivos = {}
+    if "motivo_atraso" in week_df.columns:
+        for m in week_df[week_df["motivo_atraso"].notna()]["motivo_atraso"]:
+            if m and str(m).strip():
+                motivos[str(m)] = motivos.get(str(m), 0) + 1
+
+    # Categorias extras
+    categorias = {}
+    if "categoria_extra" in week_df.columns:
+        for c in week_df[week_df["categoria_extra"].notna()]["categoria_extra"]:
+            if c and str(c).strip():
+                categorias[str(c)] = categorias.get(str(c), 0) + 1
+
+    taxa_prod = round((horas_executadas / horas_previstas) * 100, 1) if horas_previstas > 0 else 0
 
     by_day = {}
     for _, row in week_df.iterrows():
@@ -219,10 +264,10 @@ def get_weekly_data(reference_date=None):
     return {
         "total": total, "concluidas": concluidas, "parciais": parciais,
         "nao_realizadas": nao_real, "reunioes": reunioes,
-        "horas_previstas": 0, "horas_executadas": 0,
-        "horas_extras": 0, "horas_pendentes": 0,
-        "taxa_conclusao": taxa, "taxa_produtividade": 0,
-        "by_day": by_day, "motivos_atraso": {}, "categorias_extras": {},
+        "horas_previstas": horas_previstas, "horas_executadas": horas_executadas,
+        "horas_extras": horas_extras, "horas_pendentes": 0,
+        "taxa_conclusao": taxa, "taxa_produtividade": taxa_prod,
+        "by_day": by_day, "motivos_atraso": motivos, "categorias_extras": categorias,
         "atividades_detail": week_df[["titulo","status","tempo_previsto","dia_semana"]].to_dict("records"),
     }
 
