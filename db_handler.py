@@ -215,23 +215,27 @@ def get_weekly_data(reference_date=None, usuario=None):
     horas_previstas = round(week_df["tempo_previsto"].apply(lambda x: int(x) if str(x).isdigit() else 0).sum() / 60, 1)
 
     # Horas executadas: estimativa baseada em tempo_executado
+    # Nota: botões usam travessão (–), não hífen (-)
     _exec_map = {
         "Menos de 15 minutos": 10,
-        "15-30 minutos": 22,
-        "30-60 minutos": 45,
-        "Igual ao planejado": None,   # usa tempo_previsto
-        "Acima do planejado": None,   # usa tempo_previsto * 1.2
+        "15–30 minutos": 22,   # 15–30
+        "30–60 minutos": 45,   # 30–60
+        "Igual ao planejado": None,  # usa tempo_previsto
+        "Acima do planejado": None,  # usa tempo_previsto + excedente
     }
     horas_exec_min = 0
     for _, row in week_df.iterrows():
-        te = str(row.get("tempo_executado", ""))
+        te = str(row.get("tempo_executado", "")).strip()
         tp = int(row.get("tempo_previsto") or 0)
         if te in _exec_map and _exec_map[te] is not None:
             horas_exec_min += _exec_map[te]
         elif te == "Igual ao planejado":
             horas_exec_min += tp
         elif te == "Acima do planejado":
-            horas_exec_min += int(tp * 1.2)
+            # tenta parsear tempo_excedente ("30 min", "1h", "1h30", "1:30")
+            excedente_str = str(row.get("tempo_excedente", "")).strip().lower()
+            extra_mins = _parse_duration(excedente_str)
+            horas_exec_min += tp + (extra_mins if extra_mins else int(tp * 0.2))
         elif row.get("status") == "Concluído":
             horas_exec_min += tp
     horas_executadas = round(horas_exec_min / 60, 1)
@@ -303,8 +307,24 @@ def get_managerial_data(period="month", usuario=None):
 
     records = [r for r in records if _dt(r.get("data", "")) >= cutoff]
     total = len(records)
-    concluidas = sum(1 for r in records if r.get("status") == "Concluído")
-    taxa = round((concluidas / total) * 100, 1) if total > 0 else 0
+    if total == 0:
+        return {
+            "period": period, "total_atividades": 0, "concluidas": 0,
+            "taxa_conclusao": 0, "reunioes": 0, "extras_total": 0,
+            "by_categoria": {}, "heatmap_days": {}, "top_activities": {}, "motivos_atraso": {},
+            "horas_previstas": 0, "horas_executadas": 0, "nao_realizadas": 0, "parciais": 0,
+        }
+
+    concluidas  = sum(1 for r in records if r.get("status") == "Concluído")
+    parciais    = sum(1 for r in records if r.get("status") == "Parcial")
+    nao_real    = sum(1 for r in records if r.get("status") == "Não realizado")
+    taxa        = round((concluidas / total) * 100, 1) if total > 0 else 0
+
+    reunioes = sum(1 for r in records if any(
+        w in str(r.get("titulo", "")).lower()
+        for w in ["reunião", "meeting", "call", "sync", "alinhamento"]
+    ))
+    extras_total = sum(1 for r in records if r.get("atividade_extra") == "Sim")
 
     heatmap = {d: 0 for d in ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira"]}
     for r in records:
@@ -312,13 +332,82 @@ def get_managerial_data(period="month", usuario=None):
         if day in heatmap:
             heatmap[day] += 1
 
+    by_categoria = {}
+    for r in records:
+        cat = str(r.get("categoria_extra", "")).strip()
+        if cat and r.get("atividade_extra") == "Sim":
+            by_categoria[cat] = by_categoria.get(cat, 0) + 1
+
+    motivos = {}
+    for r in records:
+        m = str(r.get("motivo_atraso", "")).strip()
+        if m and r.get("houve_atraso") == "Sim":
+            motivos[m] = motivos.get(m, 0) + 1
+
+    top_activities = {}
+    for r in records:
+        t = str(r.get("titulo", "")).strip()
+        if t:
+            top_activities[t] = top_activities.get(t, 0) + 1
+    top_activities = dict(sorted(top_activities.items(), key=lambda x: x[1], reverse=True)[:10])
+
+    horas_previstas = round(sum(int(r.get("tempo_previsto") or 0) for r in records) / 60, 1)
+
+    _exec_map = {
+        "Menos de 15 minutos": 10, "15–30 minutos": 22, "30–60 minutos": 45,
+    }
+    horas_exec_min = 0
+    for r in records:
+        te = str(r.get("tempo_executado", "")).strip()
+        tp = int(r.get("tempo_previsto") or 0)
+        if te in _exec_map:
+            horas_exec_min += _exec_map[te]
+        elif te == "Igual ao planejado":
+            horas_exec_min += tp
+        elif te == "Acima do planejado":
+            extra = _parse_duration(str(r.get("tempo_excedente", "")))
+            horas_exec_min += tp + (extra if extra else int(tp * 0.2))
+        elif r.get("status") == "Concluído":
+            horas_exec_min += tp
+    horas_executadas = round(horas_exec_min / 60, 1)
+
     return {
         "period": period, "total_atividades": total,
-        "concluidas": concluidas, "taxa_conclusao": taxa,
-        "reunioes": 0, "extras_total": 0,
-        "by_categoria": {}, "heatmap_days": heatmap,
-        "top_activities": {}, "motivos_atraso": {},
+        "concluidas": concluidas, "parciais": parciais, "nao_realizadas": nao_real,
+        "taxa_conclusao": taxa, "reunioes": reunioes, "extras_total": extras_total,
+        "horas_previstas": horas_previstas, "horas_executadas": horas_executadas,
+        "by_categoria": by_categoria, "heatmap_days": heatmap,
+        "top_activities": top_activities, "motivos_atraso": motivos,
     }
+
+
+def _parse_duration(s):
+    """Converte strings como '30 min', '1h', '1h30', '1:30' em minutos."""
+    import re
+    if not s:
+        return 0
+    s = s.strip().lower().replace(" ", "")
+    # 1h30, 1h30min
+    m = re.match(r"(\d+)h(\d+)", s)
+    if m:
+        return int(m.group(1)) * 60 + int(m.group(2))
+    # 1h
+    m = re.match(r"(\d+)h$", s)
+    if m:
+        return int(m.group(1)) * 60
+    # 1:30
+    m = re.match(r"(\d+):(\d+)", s)
+    if m:
+        return int(m.group(1)) * 60 + int(m.group(2))
+    # 30min, 30m
+    m = re.match(r"(\d+)m", s)
+    if m:
+        return int(m.group(1))
+    # só número
+    m = re.match(r"(\d+)$", s)
+    if m:
+        return int(m.group(1))
+    return 0
 
 
 def _mins_to_time(mins):
