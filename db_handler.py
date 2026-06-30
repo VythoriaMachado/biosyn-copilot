@@ -39,6 +39,7 @@ if SUPABASE_URL and SUPABASE_KEY:
                 "origem":                e.get("origem", ""),
                 "status":                e.get("status", ""),
                 "tempo_executado":       e.get("tempo_executado", ""),
+                "tempo_excedente":       e.get("tempo_excedente", ""),
                 "houve_atraso":          e.get("houve_atraso", "Não"),
                 "motivo_atraso":         e.get("motivo_atraso", ""),
                 "reagendado":            e.get("reagendado", "Não"),
@@ -117,7 +118,7 @@ else:
                     data TEXT, dia_semana TEXT, titulo TEXT,
                     horario_inicio TEXT, horario_fim TEXT, tempo_previsto INTEGER,
                     descricao TEXT, responsavel TEXT, origem TEXT, status TEXT,
-                    tempo_executado TEXT, houve_atraso TEXT, motivo_atraso TEXT,
+                    tempo_executado TEXT, tempo_excedente TEXT, houve_atraso TEXT, motivo_atraso TEXT,
                     reagendado TEXT, prioridade TEXT, atividade_extra TEXT,
                     categoria_extra TEXT, nome_atividade_extra TEXT, tempo_extra INTEGER,
                     solicitante_extra TEXT, observacoes TEXT, timestamp_registro TEXT
@@ -134,18 +135,18 @@ else:
                     INSERT INTO checklist (
                         data, dia_semana, titulo, horario_inicio, horario_fim,
                         tempo_previsto, descricao, responsavel, origem, status,
-                        tempo_executado, houve_atraso, motivo_atraso, reagendado,
+                        tempo_executado, tempo_excedente, houve_atraso, motivo_atraso, reagendado,
                         prioridade, atividade_extra, categoria_extra,
                         nome_atividade_extra, tempo_extra, solicitante_extra,
                         observacoes, timestamp_registro
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, (
                     e.get("data",""), e.get("dia_semana",""), e.get("titulo",""),
                     e.get("horario_inicio",""), e.get("horario_fim",""),
                     e.get("tempo_previsto",0), e.get("descricao",""),
                     e.get("responsavel",""), e.get("origem",""), e.get("status",""),
-                    e.get("tempo_executado",""), e.get("houve_atraso","Não"),
-                    e.get("motivo_atraso",""), e.get("reagendado","Não"),
+                    e.get("tempo_executado",""), e.get("tempo_excedente",""),
+                    e.get("houve_atraso","Não"), e.get("motivo_atraso",""), e.get("reagendado","Não"),
                     e.get("prioridade","Média"), e.get("atividade_extra","Não"),
                     e.get("categoria_extra",""), e.get("nome_atividade_extra",""),
                     e.get("tempo_extra",0), e.get("solicitante_extra",""),

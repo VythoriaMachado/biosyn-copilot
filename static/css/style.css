@@ -446,6 +446,16 @@ body {
 .demandas-empty i { font-size: 28px; margin-bottom: 8px; display: block; }
 .demandas-empty p { font-size: 13px; }
 
+/* ── TEMPO EXCEDENTE ── */
+.sub-section-acima {
+  background: #fff5f5; border: 1px solid #ffcdd2; border-radius: 10px;
+  padding: 14px 16px; margin-top: -8px;
+}
+.tempo-excedente-input {
+  max-width: 220px; border-color: #E53935 !important;
+}
+.tempo-excedente-input:focus { outline-color: #E53935; }
+
 /* ── MODO GESTOR ── */
 .nav-item-gestor {
   border-top: 1px solid rgba(255,255,255,.12);

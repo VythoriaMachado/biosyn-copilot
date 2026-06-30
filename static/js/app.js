@@ -306,6 +306,18 @@ const Checklist = {
       </div>
     </div>
 
+    ${ans.tempo_executado === 'Acima do planejado' ? `
+    <div class="form-section sub-section-acima">
+      <div class="form-section-label" style="color:#E53935"><i class="fa-solid fa-clock-rotate-left"></i> Quanto tempo acima do planejado?</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <input class="form-input tempo-excedente-input" id="tempoExcedenteInput" type="text"
+          placeholder="Ex: 30 min, 1h, 1h30…"
+          value="${ans.tempo_excedente || ''}"
+          oninput="Checklist.setField('tempo_excedente', this.value)">
+        <span style="font-size:12px;color:var(--gray-400)">Digite livremente o tempo extra gasto</span>
+      </div>
+    </div>` : ''}
+
     <div class="form-section">
       <div class="form-section-label"><i class="fa-solid fa-clock-rotate-left"></i> Houve atraso?</div>
       <div class="btn-group" data-field="houve_atraso">
@@ -597,6 +609,7 @@ const Checklist = {
       const statusColor = ans.status === 'Concluído' ? '#1DB954' : ans.status === 'Parcial' ? '#F4A900' : '#E53935';
       let detail = `<b style="color:${statusColor}">${ans.status || '—'}</b>`;
       if (ans.tempo_executado) detail += ` · ${ans.tempo_executado}`;
+      if (ans.tempo_executado === 'Acima do planejado' && ans.tempo_excedente) detail += ` (+${ans.tempo_excedente})`;
       if (ans.houve_atraso === 'Sim') detail += ` · Atraso: ${ans.motivo_atraso || 'não informado'}`;
       if (ans.atividade_extra === 'Sim') detail += ` · Extra: ${ans.nome_atividade_extra || ans.categoria_extra || '—'}`;
       return `
@@ -669,6 +682,7 @@ const Checklist = {
         origem: a.origem || 'Manual',
         status: ans.status || '',
         tempo_executado: ans.tempo_executado || '',
+        tempo_excedente: ans.tempo_executado === 'Acima do planejado' ? (ans.tempo_excedente || '') : '',
         houve_atraso: ans.houve_atraso || 'Não',
         motivo_atraso: ans.motivo_atraso || '',
         reagendado: ans.reagendado || 'Não',
