@@ -191,16 +191,25 @@ def get_weekly_data(reference_date=None, usuario=None):
     start = reference_date - timedelta(days=7)
     end = reference_date
 
-    records = get_all_data()
+    all_records = get_all_data()
     if usuario:
         u = usuario.strip().lower()
-        records = [r for r in records if r.get("responsavel", "").strip().lower() == u]
+        records = [r for r in all_records if r.get("responsavel", "").strip().lower() == u]
+        # Retrocompat: se não achar pelo nome, usa todos (dados antigos sem responsavel)
+        if not records:
+            records = all_records
+    else:
+        records = all_records
+
     if not records:
         return _empty_weekly()
 
     df = pd.DataFrame(records)
     df["Data_dt"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
     week_df = df[(df["Data_dt"].dt.date >= start) & (df["Data_dt"].dt.date <= end)]
+    if week_df.empty:
+        # Amplia para 30 dias se a semana não tiver dados
+        week_df = df[df["Data_dt"].dt.date >= (reference_date - timedelta(days=30))]
     if week_df.empty:
         return _empty_weekly()
 
@@ -293,11 +302,16 @@ def _empty_weekly():
 def get_managerial_data(period="month", usuario=None):
     days = {"month": 30, "quarter": 90, "year": 365}.get(period, 30)
     cutoff = date.today() - timedelta(days=days)
-    records = get_all_data()
+    all_records = get_all_data()
 
     if usuario:
         u = usuario.strip().lower()
-        records = [r for r in records if r.get("responsavel", "").strip().lower() == u]
+        records = [r for r in all_records if r.get("responsavel", "").strip().lower() == u]
+        # Retrocompat: se não achar pelo nome, usa todos
+        if not records:
+            records = all_records
+    else:
+        records = all_records
 
     def _dt(s):
         try:
