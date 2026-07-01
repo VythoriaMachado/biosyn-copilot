@@ -192,6 +192,9 @@ const Checklist = {
     this.historyMode = !!forceDate;
     this.historyDate = forceDate || null;
     this._hideAll();
+    // Reseta barra de progresso
+    $('progressFill').style.width = '0%';
+    $('progressText').textContent = '0 / 0';
 
     const url = forceDate
       ? `/api/today?checklist=1&force_date=${encodeURIComponent(forceDate)}`
@@ -483,6 +486,31 @@ const Checklist = {
 
   _clearDraft() {
     try { localStorage.removeItem(this._autosaveKey()); } catch {}
+  },
+
+  _startManual() {
+    // Cria uma atividade manual em branco para o usuário preencher
+    const profile = UserProfile.get();
+    const hoje = this.checklistDate || new Date().toLocaleDateString('pt-BR');
+    const diaSemana = this.checklistDiaSemana || ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][new Date().getDay()];
+    this.activities = [{
+      titulo: 'Atividade manual',
+      descricao: '',
+      horario_inicio: '',
+      horario_fim: '',
+      tempo_previsto: 60,
+      origem: 'Manual',
+      tipo: 'tarefa',
+      prioridade: 'Média',
+      responsavel: profile ? profile.name : '',
+    }];
+    this.checklistDate = hoje;
+    this.checklistDiaSemana = diaSemana;
+    this.answers = [{}];
+    $('checklistEmpty').style.display = 'none';
+    $('checklistDateBanner').style.display = 'block';
+    $('checklistDateLabel').innerHTML = `${hoje} — ${diaSemana} <span style="color:#099CD6;font-size:11px">✎ entrada manual</span>`;
+    this.goToActivity(0);
   },
 
   prev() {

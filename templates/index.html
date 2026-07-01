@@ -306,9 +306,17 @@
 
     <!-- Empty state -->
     <div class="empty-state" id="checklistEmpty" style="display:none">
-      <i class="fa-solid fa-inbox"></i>
-      <h3>Nenhuma atividade encontrada</h3>
-      <p>Não há atividades registradas para hoje.</p>
+      <i class="fa-solid fa-calendar-xmark" style="color:var(--sky)"></i>
+      <h3>Nenhuma atividade no Outlook para esse dia</h3>
+      <p style="max-width:420px;margin:0 auto 20px">O feed do calendário não retornou eventos para esta data. Você pode registrar atividades manualmente clicando em "Nova Demanda" abaixo, ou verificar se o link ICS do seu Outlook está atualizado no perfil.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-primary" onclick="Checklist._startManual()">
+          <i class="fa-solid fa-plus"></i> Registrar atividade manual
+        </button>
+        <button class="btn-secondary" onclick="UserProfile.showEdit()">
+          <i class="fa-solid fa-link"></i> Verificar link do calendário
+        </button>
+      </div>
     </div>
   </section>
 
