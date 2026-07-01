@@ -14,12 +14,39 @@ if SUPABASE_URL and SUPABASE_KEY:
     _sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     def _ensure_db():
-        # Supabase gerencia o schema; apenas valida conexão
         try:
             _sb.table("checklist").select("id").limit(1).execute()
             print("[DB] Conectado ao Supabase REST API")
         except Exception as e:
-            print(f"[DB] Aviso: {e}")
+            print(f"[DB] Aviso conexão: {e}")
+
+        # Migração: adiciona colunas novas que podem não existir na tabela
+        _migrate_columns()
+
+    def _migrate_columns():
+        """Adiciona colunas novas via SQL direto se ainda não existirem."""
+        try:
+            from supabase import create_client
+            import urllib.request, json as _json
+            migrations = [
+                "ALTER TABLE checklist ADD COLUMN IF NOT EXISTS tempo_excedente TEXT DEFAULT ''",
+            ]
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+            }
+            url = f"{SUPABASE_URL}/rest/v1/rpc/exec_sql"
+            for sql in migrations:
+                try:
+                    data = _json.dumps({"query": sql}).encode()
+                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                    urllib.request.urlopen(req, timeout=5)
+                    print(f"[DB] Migração OK: {sql[:60]}")
+                except Exception as ex:
+                    print(f"[DB] Migração via RPC falhou (normal se rpc não existir): {ex}")
+        except Exception as e:
+            print(f"[DB] _migrate_columns erro: {e}")
 
     _ensure_db()
 
@@ -55,6 +82,18 @@ if SUPABASE_URL and SUPABASE_KEY:
         try:
             _sb.table("checklist").insert(rows).execute()
         except Exception as e:
+            err_str = str(e)
+            # Se falhou por coluna inexistente, tenta sem os campos novos
+            if "tempo_excedente" in err_str or "column" in err_str.lower():
+                print(f"[DB] Coluna nova ausente, salvando sem tempo_excedente: {e}")
+                rows_compat = [{k: v for k, v in r.items() if k != "tempo_excedente"} for r in rows]
+                try:
+                    _sb.table("checklist").insert(rows_compat).execute()
+                    print("[DB] Salvo no modo compatibilidade (sem tempo_excedente)")
+                    return
+                except Exception as e2:
+                    print(f"[DB] save_checklist erro compat: {e2}")
+                    raise RuntimeError(f"Erro ao salvar no banco: {e2}")
             print(f"[DB] save_checklist erro: {e}")
             raise RuntimeError(f"Erro ao salvar no banco: {e}")
 
