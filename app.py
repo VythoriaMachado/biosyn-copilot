@@ -69,11 +69,8 @@ def api_today():
     target_str = target.strftime("%d/%m/%Y")
     all_records = get_all_data()
     usuario_lower = usuario.strip().lower() if usuario else ""
-    # Filtra por data + usuário; se não achar nada, usa só data (retrocompatibilidade)
     excel_dia = [r for r in all_records if r.get("data", "") == target_str
                  and (not usuario_lower or r.get("responsavel", "").strip().lower() == usuario_lower)]
-    if not excel_dia and usuario_lower:
-        excel_dia = [r for r in all_records if r.get("data", "") == target_str]
 
     # Para o dashboard: pendências são do dia de hoje (filtradas por usuário)
     excel_hoje = [r for r in all_records if r.get("data", "") == date.today().strftime("%d/%m/%Y")

@@ -234,9 +234,6 @@ def get_weekly_data(reference_date=None, usuario=None):
     if usuario:
         u = usuario.strip().lower()
         records = [r for r in all_records if r.get("responsavel", "").strip().lower() == u]
-        # Retrocompat: se não achar pelo nome, usa todos (dados antigos sem responsavel)
-        if not records:
-            records = all_records
     else:
         records = all_records
 
@@ -346,9 +343,6 @@ def get_managerial_data(period="month", usuario=None):
     if usuario:
         u = usuario.strip().lower()
         records = [r for r in all_records if r.get("responsavel", "").strip().lower() == u]
-        # Retrocompat: se não achar pelo nome, usa todos
-        if not records:
-            records = all_records
     else:
         records = all_records
 
