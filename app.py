@@ -297,6 +297,24 @@ def api_history_update():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/status")
+def api_status():
+    """Diagnóstico: testa conexão e retorna contagem de registros."""
+    try:
+        records = get_all_data()
+        usuarios = list({r.get("responsavel","") for r in records if r.get("responsavel")})
+        datas = sorted({r.get("data","") for r in records if r.get("data")}, reverse=True)[:5]
+        return jsonify({
+            "ok": True,
+            "total_registros": len(records),
+            "usuarios": usuarios,
+            "ultimas_datas": datas,
+            "banco": "Supabase" if os.environ.get("SUPABASE_URL") else "SQLite local",
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "erro": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     app.run(debug=False, host="0.0.0.0", port=port)
