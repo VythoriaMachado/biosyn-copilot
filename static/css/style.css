@@ -1008,3 +1008,13 @@ body {
 .guia-select-item-title { font-size: 13px; font-weight: 600; color: var(--navy); }
 .guia-select-item-cat  { font-size: 11px; color: var(--gray-400); }
 
+/* botão upload de arquivo na linha de mídia */
+.btn-upload-midia {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+  background: var(--gray-100); border: 1px solid var(--gray-200);
+  color: var(--gray-600); cursor: pointer; font-size: 14px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-upload-midia:hover { background: #E8F4FD; border-color: var(--sky); color: var(--sky); }
+

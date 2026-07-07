@@ -299,7 +299,7 @@ def api_history_update():
 from guias_handler import (
     list_guias, get_guia, get_guia_por_atividade, create_guia,
     update_guia, delete_guia, toggle_favorito, duplicar_guia,
-    vincular_guia, get_versoes, get_categorias,
+    vincular_guia, get_versoes, get_categorias, upload_midia,
 )
 
 @app.route("/api/guias")
@@ -392,6 +392,19 @@ def api_vincular_guia(guia_id):
     try:
         vincular_guia(guia_id, titulo_atividade)
         return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/upload", methods=["POST"])
+def api_guia_upload():
+    if "file" not in request.files:
+        return jsonify({"error": "Nenhum arquivo enviado"}), 400
+    file = request.files["file"]
+    if not file or not file.filename:
+        return jsonify({"error": "Arquivo inválido"}), 400
+    try:
+        url = upload_midia(file)
+        return jsonify({"success": True, "url": url, "nome": file.filename})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

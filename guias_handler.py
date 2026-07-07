@@ -2,8 +2,32 @@
 Handler para Guias de Execução — "Como Fazer".
 Supabase (nuvem) ou SQLite (local), mesma interface.
 """
-import os, json
+import os, json, uuid, mimetypes
 from datetime import datetime
+
+STORAGE_BUCKET = "guia-midias"
+
+
+def upload_midia(file):
+    """Faz upload de arquivo e retorna a URL pública."""
+    ext      = file.filename.rsplit('.', 1)[-1].lower() if '.' in (file.filename or '') else 'bin'
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    ctype    = file.content_type or mimetypes.guess_type(file.filename or '')[0] or 'application/octet-stream'
+    data     = file.read()
+
+    if USE_SUPABASE:
+        _sb.storage.from_(STORAGE_BUCKET).upload(
+            filename, data, {"content-type": ctype, "x-upsert": "true"}
+        )
+        return _sb.storage.from_(STORAGE_BUCKET).get_public_url(filename)
+    else:
+        # fallback local: salva em static/uploads/
+        uploads = os.path.join(os.path.dirname(__file__), "static", "uploads")
+        os.makedirs(uploads, exist_ok=True)
+        dest = os.path.join(uploads, filename)
+        with open(dest, 'wb') as f:
+            f.write(data)
+        return f"/static/uploads/{filename}"
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")

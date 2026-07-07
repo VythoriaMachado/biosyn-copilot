@@ -1649,12 +1649,16 @@ const GuiaDrawer = {
       </div>`).join('');
 
     const midiasHtml = midias.map((m, i) => `
-      <div class="guia-passo-row" data-idx="${i}" style="flex-wrap:wrap;gap:6px">
-        <select style="border:1px solid var(--gray-200);border-radius:8px;padding:7px;font-size:12px;font-family:inherit">
-          ${['link','video','pdf','imagem','arquivo'].map(t => `<option value="${t}"${m.tipo===t?' selected':''}>${t}</option>`).join('')}
+      <div class="guia-passo-row midia-row" data-idx="${i}" style="flex-wrap:wrap;gap:6px;align-items:center">
+        <select class="midia-tipo-sel" style="border:1px solid var(--gray-200);border-radius:8px;padding:7px;font-size:12px;font-family:inherit">
+          ${['link','video','pdf','imagem','excel','arquivo'].map(t => `<option value="${t}"${m.tipo===t?' selected':''}>${t}</option>`).join('')}
         </select>
-        <input type="text" value="${(m.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome/título" style="flex:1;min-width:100px">
-        <input type="url" value="${(m.url||'').replace(/"/g,'&quot;')}" placeholder="URL" style="flex:2;min-width:140px">
+        <input type="text" class="midia-nome" value="${(m.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome/título" style="flex:1;min-width:100px">
+        <input type="url" class="midia-url" value="${(m.url||'').replace(/"/g,'&quot;')}" placeholder="URL" style="flex:2;min-width:120px">
+        <label class="btn-upload-midia" title="Substituir por arquivo">
+          <i class="fa-solid fa-paperclip"></i>
+          <input type="file" style="display:none" onchange="GuiaDrawer._uploadArquivo(this)">
+        </label>
         <button class="btn-remove-item" onclick="GuiaDrawer._removeMidia(this)"><i class="fa-solid fa-xmark"></i></button>
       </div>`).join('');
 
@@ -1757,16 +1761,54 @@ const GuiaDrawer = {
   _addMidia() {
     const c = $('gfMidias');
     const div = document.createElement('div');
-    div.className = 'guia-passo-row';
-    div.style.cssText = 'flex-wrap:wrap;gap:6px';
-    div.innerHTML = `<select style="border:1px solid var(--gray-200);border-radius:8px;padding:7px;font-size:12px;font-family:inherit">
-        ${['link','video','pdf','imagem','arquivo'].map(t => `<option value="${t}">${t}</option>`).join('')}
+    div.className = 'guia-passo-row midia-row';
+    div.style.cssText = 'flex-wrap:wrap;gap:6px;align-items:center';
+    div.innerHTML = `
+      <select class="midia-tipo-sel" style="border:1px solid var(--gray-200);border-radius:8px;padding:7px;font-size:12px;font-family:inherit">
+        ${['link','video','pdf','imagem','excel','arquivo'].map(t => `<option value="${t}">${t}</option>`).join('')}
       </select>
-      <input type="text" placeholder="Nome/título" style="flex:1;min-width:100px">
-      <input type="url" placeholder="URL (https://...)" style="flex:2;min-width:140px">
+      <input type="text" class="midia-nome" placeholder="Nome/título" style="flex:1;min-width:100px">
+      <input type="url" class="midia-url" placeholder="URL (https://...)" style="flex:2;min-width:120px">
+      <label class="btn-upload-midia" title="Escolher arquivo do computador">
+        <i class="fa-solid fa-paperclip"></i>
+        <input type="file" style="display:none" onchange="GuiaDrawer._uploadArquivo(this)">
+      </label>
       <button class="btn-remove-item" onclick="GuiaDrawer._removeMidia(this)"><i class="fa-solid fa-xmark"></i></button>`;
     c.appendChild(div);
-    div.querySelectorAll('input')[0].focus();
+    div.querySelector('.midia-nome').focus();
+  },
+
+  async _uploadArquivo(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const row = input.closest('.midia-row');
+    const urlInput  = row.querySelector('.midia-url');
+    const nomeInput = row.querySelector('.midia-nome');
+    const tipoSel   = row.querySelector('.midia-tipo-sel');
+    const label     = input.closest('.btn-upload-midia');
+
+    label.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    label.style.pointerEvents = 'none';
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/guias/upload', {method:'POST', body: form}).then(r => r.json());
+      if (res.error) throw new Error(res.error);
+      urlInput.value  = res.url;
+      if (!nomeInput.value) nomeInput.value = file.name;
+      // auto-detectar tipo
+      const ext = file.name.split('.').pop().toLowerCase();
+      const tipoMap = { pdf:'pdf', xlsx:'excel', xls:'excel', png:'imagem', jpg:'imagem', jpeg:'imagem', gif:'imagem', mp4:'video', avi:'video', mov:'video' };
+      if (tipoMap[ext]) tipoSel.value = tipoMap[ext];
+      else if (!['link','video','pdf','imagem','excel'].includes(tipoSel.value)) tipoSel.value = 'arquivo';
+      showToast('Arquivo enviado com sucesso!', 'success');
+    } catch(e) {
+      showToast(`Erro no upload: ${e.message}`, 'error');
+    } finally {
+      label.innerHTML = '<i class="fa-solid fa-paperclip"></i><input type="file" style="display:none" onchange="GuiaDrawer._uploadArquivo(this)">';
+      label.style.pointerEvents = '';
+    }
   },
 
   _removeMidia(btn) { btn.closest('.guia-passo-row').remove(); },
@@ -1774,11 +1816,11 @@ const GuiaDrawer = {
   _coletarForm() {
     const passos    = [...$('gfPassos').querySelectorAll('.guia-passo-row input[type=text]')].map(i => i.value.trim()).filter(Boolean);
     const materiais = [...$('gfMateriais').querySelectorAll('input[type=text]')].map(i => i.value.trim()).filter(Boolean);
-    const midias    = [...$('gfMidias').querySelectorAll('.guia-passo-row')].map(row => {
-      const sel  = row.querySelector('select');
-      const inps = row.querySelectorAll('input');
-      return { tipo: sel?.value||'link', nome: inps[0]?.value.trim()||'', url: inps[1]?.value.trim()||'' };
-    }).filter(m => m.url);
+    const midias    = [...$('gfMidias').querySelectorAll('.guia-passo-row')].map(row => ({
+      tipo: row.querySelector('.midia-tipo-sel, select')?.value || 'link',
+      nome: row.querySelector('.midia-nome')?.value.trim() || '',
+      url:  row.querySelector('.midia-url')?.value.trim()  || '',
+    })).filter(m => m.url);
     return {
       titulo:          ($('gfTitulo')?.value||'').trim(),
       categoria:       ($('gfCategoria')?.value||'Geral').trim(),
