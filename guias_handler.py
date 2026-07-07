@@ -5,7 +5,7 @@ Supabase (nuvem) ou SQLite (local), mesma interface.
 import os, json, uuid, mimetypes
 from datetime import datetime
 
-STORAGE_BUCKET = "guia-midias"
+STORAGE_BUCKET = "Guia-Midias"
 
 
 def upload_midia(file):
