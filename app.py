@@ -294,6 +294,114 @@ def api_history_update():
         return jsonify({"error": str(e)}), 500
 
 
+# ── GUIAS (COMO FAZER) ───────────────────────────────────────────────────────
+
+from guias_handler import (
+    list_guias, get_guia, get_guia_por_atividade, create_guia,
+    update_guia, delete_guia, toggle_favorito, duplicar_guia,
+    vincular_guia, get_versoes, get_categorias,
+)
+
+@app.route("/api/guias")
+def api_list_guias():
+    search       = request.args.get("search", "")
+    categoria    = request.args.get("categoria", "")
+    favoritos    = request.args.get("favoritos", "") == "1"
+    try:
+        guias = list_guias(search=search, categoria=categoria, favoritos_only=favoritos)
+        return jsonify({"guias": guias, "total": len(guias)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/categorias")
+def api_guias_categorias():
+    try:
+        return jsonify({"categorias": get_categorias()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/por-atividade")
+def api_guia_por_atividade():
+    titulo = request.args.get("titulo", "")
+    if not titulo:
+        return jsonify({"guia": None})
+    try:
+        return jsonify({"guia": get_guia_por_atividade(titulo)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>")
+def api_get_guia(guia_id):
+    try:
+        guia = get_guia(guia_id)
+        if not guia:
+            return jsonify({"error": "Não encontrado"}), 404
+        return jsonify(guia)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias", methods=["POST"])
+def api_create_guia():
+    data = request.get_json()
+    try:
+        guia_id = create_guia(data, usuario=data.get("usuario", ""))
+        return jsonify({"success": True, "id": guia_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>", methods=["PUT"])
+def api_update_guia(guia_id):
+    data = request.get_json()
+    try:
+        update_guia(guia_id, data, usuario=data.get("usuario", ""))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>", methods=["DELETE"])
+def api_delete_guia(guia_id):
+    try:
+        delete_guia(guia_id)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>/favorito", methods=["POST"])
+def api_toggle_favorito(guia_id):
+    try:
+        novo = toggle_favorito(guia_id)
+        return jsonify({"success": True, "favorito": novo})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>/duplicar", methods=["POST"])
+def api_duplicar_guia(guia_id):
+    data = request.get_json() or {}
+    try:
+        novo_id = duplicar_guia(guia_id, usuario=data.get("usuario", ""))
+        return jsonify({"success": True, "id": novo_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>/vincular", methods=["POST"])
+def api_vincular_guia(guia_id):
+    data = request.get_json()
+    titulo_atividade = data.get("titulo_atividade", "")
+    if not titulo_atividade:
+        return jsonify({"error": "Título não informado"}), 400
+    try:
+        vincular_guia(guia_id, titulo_atividade)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/guias/<int:guia_id>/versoes")
+def api_versoes_guia(guia_id):
+    try:
+        return jsonify({"versoes": get_versoes(guia_id)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/status")
 def api_status():
     """Diagnóstico: testa conexão e retorna contagem de registros."""

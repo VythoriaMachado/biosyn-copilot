@@ -88,6 +88,7 @@ const App = {
       weekly:     'Dashboard Semanal',
       managerial: 'Painel Gerencial',
       insights:   'Insights de IA',
+      biblioteca: 'Biblioteca de Guias',
     };
     $('viewTitle').textContent = titles[name] || '';
 
@@ -102,6 +103,7 @@ const App = {
     if (name === 'weekly')     Weekly.load();
     if (name === 'managerial') Managerial.load();
     if (name === 'insights')   InsightsView.load(30);
+    if (name === 'biblioteca') GuiaBiblioteca.load();
   },
 
   loadChecklist() { App.switchView('checklist'); },
@@ -139,6 +141,7 @@ const Dashboard = {
         const isReuniao = (a.tipo === 'reuniao') || ['reunião','meeting','call'].some(w => (a.titulo||'').toLowerCase().includes(w));
         const prioClass = a.prioridade === 'Alta' ? 'badge-alta' : a.prioridade === 'Baixa' ? 'badge-baixa' : 'badge-media';
         const statusBadge = a.status ? `<span class="badge badge-${a.status === 'Concluído' ? 'concluido' : a.status === 'Parcial' ? 'parcial' : 'pendente'}">${a.status}</span>` : '';
+        const tituloEsc = (a.titulo||'').replace(/'/g,"&#39;");
         return `
           <div class="activity-row">
             <div class="act-time">
@@ -154,11 +157,37 @@ const Dashboard = {
               <span class="badge ${prioClass}">${a.prioridade || 'Média'}</span>
               ${statusBadge}
               <span class="badge badge-manual">${a.tempo_previsto || 60} min</span>
+              <button class="btn-como-fazer" onclick="GuiaDrawer.abrir('${tituloEsc}')" title="Ver guia de execução">
+                <i class="fa-solid fa-book-open"></i> Como Fazer
+              </button>
             </div>
           </div>`;
       }).join('');
+      // Verificar quais atividades têm guia e destacar o botão
+      Dashboard._marcarGuias(data.atividades);
     } catch(e) {
       $('activitiesList').innerHTML = `<div class="alert-strip alert-warning"><i class="fa-solid fa-triangle-exclamation"></i> Não foi possível carregar a agenda. Verifique se o servidor está rodando.</div>`;
+    }
+  },
+
+  async _marcarGuias(atividades) {
+    // Para cada atividade, verifica silenciosamente se tem guia e ajusta o botão
+    for (const a of atividades) {
+      try {
+        const res = await fetch(`/api/guias/por-atividade?titulo=${encodeURIComponent(a.titulo)}`).then(r => r.json());
+        if (res.guia) {
+          // Encontra o botão pelo título e adiciona classe "tem-guia"
+          const btns = document.querySelectorAll('.btn-como-fazer');
+          btns.forEach(btn => {
+            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(
+              (a.titulo||'').replace(/'/g,"&#39;").substring(0, 20)
+            )) {
+              btn.classList.add('tem-guia');
+              btn.title = `Guia disponível: ${res.guia.titulo}`;
+            }
+          });
+        }
+      } catch(_) {}
     }
   }
 };
@@ -1285,6 +1314,674 @@ const ChecklistHistory = {
     $('historyDatePicker').value = '';
     this._adminUnlocked = false;
     Checklist.init();
+  },
+};
+
+// ── GUIA DRAWER ──────────────────────────────────────────────────────────
+
+const GuiaDrawer = {
+  guia:            null,
+  tituloAtividade: null,
+  modoEdicao:      false,
+  stepsDone:       new Set(),
+  _todosGuias:     [],
+
+  async abrir(tituloAtividade) {
+    this.tituloAtividade = tituloAtividade;
+    this.stepsDone = new Set();
+    this.modoEdicao = false;
+    $('guiaDrawerTitle').textContent = tituloAtividade;
+    $('guiaDrawer').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    $('guiaDrawerBody').innerHTML = '<div class="loading-spinner" style="padding:40px"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+    $('guiaEditBtn').style.display = 'none';
+    $('guiaFavBtn').style.display = 'none';
+    try {
+      const res = await fetch(`/api/guias/por-atividade?titulo=${encodeURIComponent(tituloAtividade)}`).then(r => r.json());
+      this.guia = res.guia;
+      if (this.guia) {
+        this._renderGuia();
+      } else {
+        this._renderVazio();
+      }
+    } catch(e) {
+      $('guiaDrawerBody').innerHTML = '<div class="guia-empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>Erro ao carregar</h3></div>';
+    }
+  },
+
+  async abrirPorId(id) {
+    this.tituloAtividade = null;
+    this.stepsDone = new Set();
+    this.modoEdicao = false;
+    $('guiaDrawer').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    $('guiaDrawerBody').innerHTML = '<div class="loading-spinner" style="padding:40px"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+    try {
+      const guia = await fetch(`/api/guias/${id}`).then(r => r.json());
+      this.guia = guia;
+      $('guiaDrawerTitle').textContent = guia.titulo || 'Guia';
+      this._renderGuia();
+    } catch(e) {
+      $('guiaDrawerBody').innerHTML = '<div class="guia-empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>Erro ao carregar</h3></div>';
+    }
+  },
+
+  fechar() {
+    $('guiaDrawer').style.display = 'none';
+    document.body.style.overflow = '';
+    this.guia = null;
+    this.modoEdicao = false;
+  },
+
+  _renderGuia() {
+    const g = this.guia;
+    $('guiaDrawerTitle').textContent = g.titulo || 'Guia';
+    $('guiaEditBtn').style.display = '';
+    $('guiaFavBtn').style.display = '';
+    const favIcon = g.favorito ? 'fa-solid fa-star' : 'fa-regular fa-star';
+    $('guiaFavBtn').innerHTML = `<i class="${favIcon}"></i>`;
+    $('guiaFavBtn').classList.toggle('fav-ativo', !!g.favorito);
+
+    const passos = Array.isArray(g.passos) ? g.passos : [];
+    const materiais = Array.isArray(g.materiais) ? g.materiais : [];
+    const midias = Array.isArray(g.midias) ? g.midias : [];
+    const total = passos.length;
+    const done = this.stepsDone.size;
+
+    const midiasHtml = midias.length ? midias.map(m => {
+      const iconMap = { video:'fa-brands fa-youtube', pdf:'fa-regular fa-file-pdf', imagem:'fa-regular fa-image', link:'fa-solid fa-link', arquivo:'fa-solid fa-paperclip' };
+      const clsMap  = { video:'midia-video', pdf:'midia-pdf', imagem:'midia-imagem', link:'midia-link', arquivo:'midia-arquivo' };
+      const icon = iconMap[m.tipo] || 'fa-solid fa-link';
+      const cls  = clsMap[m.tipo] || 'midia-link';
+      return `<div class="guia-midia-item">
+        <div class="guia-midia-icon ${cls}"><i class="${icon}"></i></div>
+        <div class="guia-midia-info">
+          <a href="${m.url}" target="_blank" rel="noopener">${m.nome || m.url}</a>
+          <div class="guia-midia-tipo">${m.tipo || 'link'}</div>
+        </div>
+      </div>`;
+    }).join('') : '<p style="font-size:13px;color:var(--gray-400);font-style:italic">Nenhuma mídia anexada.</p>';
+
+    const versoesHtml = `<div class="guia-section">
+      <div class="guia-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Versões</div>
+      <div id="guiaVersoesContent"><button class="btn-add-item" onclick="GuiaDrawer._carregarVersoes()"><i class="fa-solid fa-eye"></i> Ver histórico</button></div>
+    </div>`;
+
+    $('guiaDrawerBody').innerHTML = `
+      <div class="guia-tabs">
+        <button class="guia-tab active" onclick="GuiaDrawer._tab(this,'tab-execucao')">Execução</button>
+        <button class="guia-tab" onclick="GuiaDrawer._tab(this,'tab-materiais')">Materiais</button>
+        <button class="guia-tab" onclick="GuiaDrawer._tab(this,'tab-midias')">Mídias ${midias.length ? `<span style="background:var(--sky);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">${midias.length}</span>` : ''}</button>
+        <button class="guia-tab" onclick="GuiaDrawer._tab(this,'tab-mais')">Mais</button>
+      </div>
+
+      <!-- TAB EXECUÇÃO -->
+      <div class="guia-tab-content active" id="tab-execucao">
+        <div class="guia-meta">
+          ${g.tempo_estimado ? `<span class="guia-meta-chip"><i class="fa-solid fa-clock"></i> ${g.tempo_estimado}</span>` : ''}
+          ${g.categoria ? `<span class="guia-meta-chip"><i class="fa-solid fa-tag"></i> ${g.categoria}</span>` : ''}
+          <span class="guia-meta-chip"><i class="fa-solid fa-code-branch"></i> v${g.versao || 1}</span>
+        </div>
+        ${g.objetivo ? `<div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-bullseye"></i> Objetivo</div>
+          <div class="guia-section-body guia-objetivo">${g.objetivo}</div>
+        </div>` : ''}
+        ${passos.length ? `<div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-list-check"></i> Passo a Passo</div>
+          <div class="guia-progress-bar-wrap">
+            <div class="guia-progress-label">
+              <span>Progresso</span><span id="guiaStepCount">${done}/${total} concluídos</span>
+            </div>
+            <div class="guia-progress-bar">
+              <div class="guia-progress-fill" id="guiaStepBar" style="width:${total ? Math.round(done/total*100) : 0}%"></div>
+            </div>
+          </div>
+          <ul class="guia-steps">
+            ${passos.map((p, i) => `
+              <li class="guia-step${this.stepsDone.has(i) ? ' done' : ''}" onclick="GuiaDrawer.toggleStep(${i})">
+                <div class="guia-step-num">${i+1}</div>
+                <div class="guia-step-text">${p}</div>
+                <i class="fa-solid ${this.stepsDone.has(i) ? 'fa-circle-check' : 'fa-circle'} guia-step-check"></i>
+              </li>`).join('')}
+          </ul>
+        </div>` : ''}
+      </div>
+
+      <!-- TAB MATERIAIS -->
+      <div class="guia-tab-content" id="tab-materiais">
+        ${materiais.length ? `<div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-box-open"></i> Materiais Necessários</div>
+          <ul class="guia-materiais">${materiais.map(m => `<li><i class="fa-solid fa-circle-dot" style="color:var(--sky);margin-right:7px;font-size:10px"></i>${m}</li>`).join('')}</ul>
+        </div>` : '<p style="padding:20px;font-size:13px;color:var(--gray-400);font-style:italic">Nenhum material listado.</p>'}
+        ${g.dicas ? `<div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-lightbulb"></i> Dicas de Execução</div>
+          <div class="guia-section-body">${g.dicas}</div>
+        </div>` : ''}
+        ${g.erros_comuns ? `<div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red)"></i> Erros Comuns</div>
+          <div class="guia-section-body" style="border-color:var(--red);background:#FFF5F5">${g.erros_comuns}</div>
+        </div>` : ''}
+      </div>
+
+      <!-- TAB MÍDIAS -->
+      <div class="guia-tab-content" id="tab-midias">
+        <div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-paperclip"></i> Recursos Anexados</div>
+          <div class="guia-midias-list">${midiasHtml}</div>
+        </div>
+      </div>
+
+      <!-- TAB MAIS -->
+      <div class="guia-tab-content" id="tab-mais">
+        ${versoesHtml}
+        <div class="guia-section">
+          <div class="guia-section-title"><i class="fa-solid fa-link"></i> Atividades Vinculadas</div>
+          <div class="guia-section-body">
+            ${(g.atividades_vinculadas||[]).length
+              ? (g.atividades_vinculadas||[]).map(t => `<div style="font-size:13px;padding:3px 0;border-bottom:1px solid var(--gray-200)">${t}</div>`).join('')
+              : '<span style="color:var(--gray-400);font-style:italic;font-size:13px">Nenhuma atividade vinculada.</span>'}
+            ${this.tituloAtividade && !(g.atividades_vinculadas||[]).includes(this.tituloAtividade) ? `
+              <button class="btn-add-item" style="margin-top:8px" onclick="GuiaDrawer._vincularAtividade()">
+                <i class="fa-solid fa-link"></i> Vincular à atividade atual
+              </button>` : ''}
+          </div>
+        </div>
+        <div style="padding:0 0 16px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-secondary" onclick="GuiaDrawer.duplicar()">
+            <i class="fa-solid fa-copy"></i> Duplicar guia
+          </button>
+          <button class="btn-secondary" style="color:var(--red);border-color:var(--red)" onclick="GuiaDrawer.excluir()">
+            <i class="fa-solid fa-trash"></i> Excluir
+          </button>
+        </div>
+      </div>`;
+  },
+
+  _tab(btn, id) {
+    btn.closest('.guia-drawer-panel').querySelectorAll('.guia-tab').forEach(t => t.classList.remove('active'));
+    btn.closest('.guia-drawer-panel').querySelectorAll('.guia-tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    $(id).classList.add('active');
+  },
+
+  toggleStep(idx) {
+    if (this.stepsDone.has(idx)) {
+      this.stepsDone.delete(idx);
+    } else {
+      this.stepsDone.add(idx);
+    }
+    const passos = Array.isArray(this.guia?.passos) ? this.guia.passos : [];
+    const total  = passos.length;
+    const done   = this.stepsDone.size;
+    // Atualizar UI sem re-render completo
+    const steps = document.querySelectorAll('.guia-step');
+    steps.forEach((el, i) => {
+      const isDone = this.stepsDone.has(i);
+      el.classList.toggle('done', isDone);
+      el.querySelector('.guia-step-check').className = `fa-solid ${isDone ? 'fa-circle-check' : 'fa-circle'} guia-step-check`;
+    });
+    const bar = $('guiaStepBar');
+    const cnt = $('guiaStepCount');
+    if (bar) bar.style.width = `${total ? Math.round(done/total*100) : 0}%`;
+    if (cnt) cnt.textContent = `${done}/${total} concluídos`;
+  },
+
+  async toggleFavorito() {
+    if (!this.guia) return;
+    try {
+      const res = await fetch(`/api/guias/${this.guia.id}/favorito`, {method:'POST'}).then(r => r.json());
+      this.guia.favorito = res.favorito;
+      const favIcon = res.favorito ? 'fa-solid fa-star' : 'fa-regular fa-star';
+      $('guiaFavBtn').innerHTML = `<i class="${favIcon}"></i>`;
+      $('guiaFavBtn').classList.toggle('fav-ativo', res.favorito);
+      showToast(res.favorito ? 'Adicionado aos favoritos!' : 'Removido dos favoritos.', 'success');
+    } catch(e) { showToast('Erro ao favoritar.', 'error'); }
+  },
+
+  async duplicar() {
+    if (!this.guia) return;
+    const usuario = UserProfile.get()?.name || '';
+    try {
+      const res = await fetch(`/api/guias/${this.guia.id}/duplicar`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({usuario})
+      }).then(r => r.json());
+      showToast('Guia duplicado com sucesso!', 'success');
+      this.fechar();
+      GuiaBiblioteca.load();
+    } catch(e) { showToast('Erro ao duplicar.', 'error'); }
+  },
+
+  async excluir() {
+    if (!this.guia) return;
+    if (!confirm(`Excluir o guia "${this.guia.titulo}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await fetch(`/api/guias/${this.guia.id}`, {method:'DELETE'});
+      showToast('Guia excluído.', '');
+      this.fechar();
+      GuiaBiblioteca.load();
+    } catch(e) { showToast('Erro ao excluir.', 'error'); }
+  },
+
+  async _vincularAtividade() {
+    if (!this.guia || !this.tituloAtividade) return;
+    try {
+      await fetch(`/api/guias/${this.guia.id}/vincular`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({titulo_atividade: this.tituloAtividade})
+      });
+      showToast('Atividade vinculada ao guia!', 'success');
+      this.guia.atividades_vinculadas = [...(this.guia.atividades_vinculadas||[]), this.tituloAtividade];
+      this._renderGuia();
+      this._tab(document.querySelector('.guia-tab'), 'tab-execucao');
+    } catch(e) { showToast('Erro ao vincular.', 'error'); }
+  },
+
+  async _carregarVersoes() {
+    if (!this.guia) return;
+    try {
+      const res = await fetch(`/api/guias/${this.guia.id}/versoes`).then(r => r.json());
+      const versoes = res.versoes || [];
+      $('guiaVersoesContent').innerHTML = versoes.length
+        ? `<div class="guia-versoes-list">${versoes.map(v => `
+            <div class="guia-versao-item">
+              <span class="guia-versao-badge">v${v.versao}</span>
+              <span>${v.criado_em || ''}</span>
+              <span style="margin-left:auto;color:var(--gray-400)">${v.criado_por || '—'}</span>
+            </div>`).join('')}
+          </div>`
+        : '<p style="font-size:13px;color:var(--gray-400)">Sem histórico de versões.</p>';
+    } catch(e) {}
+  },
+
+  _renderVazio() {
+    $('guiaEditBtn').style.display = 'none';
+    $('guiaFavBtn').style.display = 'none';
+    $('guiaDrawerBody').innerHTML = `
+      <div class="guia-empty-state">
+        <i class="fa-regular fa-file-lines"></i>
+        <h3>Nenhum guia encontrado</h3>
+        <p>Esta atividade ainda não possui um guia de execução.<br>Crie um agora ou vincule um guia existente da biblioteca.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="GuiaDrawer.criarNovo()">
+            <i class="fa-solid fa-plus"></i> Criar Guia
+          </button>
+          <button class="btn-secondary" onclick="GuiaDrawer.selecionarDaBiblioteca()">
+            <i class="fa-solid fa-book-open"></i> Usar da Biblioteca
+          </button>
+        </div>
+      </div>`;
+  },
+
+  criarNovo() {
+    this.guia = null;
+    this.modoEdicao = true;
+    $('guiaEditBtn').style.display = 'none';
+    $('guiaFavBtn').style.display = 'none';
+    $('guiaDrawerTitle').textContent = 'Criar Guia';
+    this._renderForm({});
+  },
+
+  entrarEdicao() {
+    this.modoEdicao = true;
+    $('guiaEditBtn').style.display = 'none';
+    $('guiaFavBtn').style.display = 'none';
+    $('guiaDrawerTitle').textContent = 'Editar Guia';
+    this._renderForm(this.guia || {});
+  },
+
+  _renderForm(g) {
+    const passos    = Array.isArray(g.passos)    ? g.passos    : [];
+    const materiais = Array.isArray(g.materiais) ? g.materiais : [];
+    const midias    = Array.isArray(g.midias)    ? g.midias    : [];
+
+    const passosHtml = passos.map((p, i) => `
+      <div class="guia-passo-row" data-idx="${i}">
+        <span style="font-size:12px;font-weight:700;color:var(--gray-400);min-width:18px">${i+1}.</span>
+        <input type="text" value="${(p||'').replace(/"/g,'&quot;')}" placeholder="Descreva o passo...">
+        <button class="btn-remove-item" onclick="GuiaDrawer._removePasso(this)"><i class="fa-solid fa-xmark"></i></button>
+      </div>`).join('');
+
+    const materiaisHtml = materiais.map((m, i) => `
+      <div class="guia-passo-row" data-idx="${i}">
+        <input type="text" value="${(m||'').replace(/"/g,'&quot;')}" placeholder="Material necessário...">
+        <button class="btn-remove-item" onclick="GuiaDrawer._removeMaterial(this)"><i class="fa-solid fa-xmark"></i></button>
+      </div>`).join('');
+
+    const midiasHtml = midias.map((m, i) => `
+      <div class="guia-passo-row" data-idx="${i}" style="flex-wrap:wrap;gap:6px">
+        <select style="border:1px solid var(--gray-200);border-radius:8px;padding:7px;font-size:12px;font-family:inherit">
+          ${['link','video','pdf','imagem','arquivo'].map(t => `<option value="${t}"${m.tipo===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+        <input type="text" value="${(m.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome/título" style="flex:1;min-width:100px">
+        <input type="url" value="${(m.url||'').replace(/"/g,'&quot;')}" placeholder="URL" style="flex:2;min-width:140px">
+        <button class="btn-remove-item" onclick="GuiaDrawer._removeMidia(this)"><i class="fa-solid fa-xmark"></i></button>
+      </div>`).join('');
+
+    $('guiaDrawerBody').innerHTML = `
+      <div class="guia-form" id="guiaFormBody">
+        <div class="guia-form-group">
+          <label class="guia-form-label">Título do Guia *</label>
+          <input type="text" id="gfTitulo" value="${(g.titulo||this.tituloAtividade||'').replace(/"/g,'&quot;')}" placeholder="Ex: Como conduzir reunião de alinhamento">
+        </div>
+        <div class="guia-form-group">
+          <label class="guia-form-label">Categoria</label>
+          <input type="text" id="gfCategoria" value="${(g.categoria||'Geral').replace(/"/g,'&quot;')}" placeholder="Ex: Comercial, Administrativo, Marketing...">
+        </div>
+        <div class="guia-form-group">
+          <label class="guia-form-label">Objetivo</label>
+          <textarea id="gfObjetivo" rows="2" placeholder="O que se espera alcançar com esta atividade?">${g.objetivo||''}</textarea>
+        </div>
+        <div class="guia-form-group">
+          <label class="guia-form-label">Tempo Estimado</label>
+          <input type="text" id="gfTempo" value="${(g.tempo_estimado||'').replace(/"/g,'&quot;')}" placeholder="Ex: 30 min, 1h30...">
+        </div>
+
+        <div class="guia-form-group">
+          <label class="guia-form-label"><i class="fa-solid fa-list-check" style="color:var(--sky)"></i> Passo a Passo</label>
+          <div class="guia-passos-editor" id="gfPassos">${passosHtml}</div>
+          <button class="btn-add-item" onclick="GuiaDrawer._addPasso()"><i class="fa-solid fa-plus"></i> Adicionar passo</button>
+        </div>
+
+        <div class="guia-form-group">
+          <label class="guia-form-label"><i class="fa-solid fa-box-open" style="color:var(--sky)"></i> Materiais Necessários</label>
+          <div class="guia-passos-editor" id="gfMateriais">${materiaisHtml}</div>
+          <button class="btn-add-item" onclick="GuiaDrawer._addMaterial()"><i class="fa-solid fa-plus"></i> Adicionar material</button>
+        </div>
+
+        <div class="guia-form-group">
+          <label class="guia-form-label">Dicas de Execução</label>
+          <textarea id="gfDicas" rows="3" placeholder="Dicas práticas para executar bem esta atividade...">${g.dicas||''}</textarea>
+        </div>
+        <div class="guia-form-group">
+          <label class="guia-form-label">Erros Comuns</label>
+          <textarea id="gfErros" rows="3" placeholder="O que costuma dar errado e como evitar...">${g.erros_comuns||''}</textarea>
+        </div>
+
+        <div class="guia-form-group">
+          <label class="guia-form-label"><i class="fa-solid fa-paperclip" style="color:var(--sky)"></i> Mídias e Recursos</label>
+          <div class="guia-passos-editor" id="gfMidias">${midiasHtml}</div>
+          <button class="btn-add-item" onclick="GuiaDrawer._addMidia()"><i class="fa-solid fa-plus"></i> Adicionar mídia/link</button>
+        </div>
+      </div>
+      <div class="guia-form-actions">
+        <button class="btn-secondary" onclick="GuiaDrawer._cancelarEdicao()"><i class="fa-solid fa-xmark"></i> Cancelar</button>
+        <button class="btn-primary" onclick="GuiaDrawer.salvar()"><i class="fa-solid fa-floppy-disk"></i> Salvar Guia</button>
+      </div>`;
+  },
+
+  _cancelarEdicao() {
+    if (this.guia) {
+      this.modoEdicao = false;
+      $('guiaDrawerTitle').textContent = this.guia.titulo;
+      $('guiaEditBtn').style.display = '';
+      $('guiaFavBtn').style.display = '';
+      this._renderGuia();
+    } else {
+      this.fechar();
+    }
+  },
+
+  _addPasso() {
+    const c = $('gfPassos');
+    const idx = c.children.length;
+    const div = document.createElement('div');
+    div.className = 'guia-passo-row';
+    div.dataset.idx = idx;
+    div.innerHTML = `<span style="font-size:12px;font-weight:700;color:var(--gray-400);min-width:18px">${idx+1}.</span>
+      <input type="text" placeholder="Descreva o passo...">
+      <button class="btn-remove-item" onclick="GuiaDrawer._removePasso(this)"><i class="fa-solid fa-xmark"></i></button>`;
+    c.appendChild(div);
+    div.querySelector('input').focus();
+  },
+
+  _removePasso(btn) { btn.closest('.guia-passo-row').remove(); this._renumerar('gfPassos'); },
+
+  _renumerar(containerId) {
+    const rows = $(`${containerId}`).querySelectorAll('.guia-passo-row');
+    rows.forEach((r, i) => { const s = r.querySelector('span'); if(s) s.textContent = `${i+1}.`; });
+  },
+
+  _addMaterial() {
+    const c = $('gfMateriais');
+    const div = document.createElement('div');
+    div.className = 'guia-passo-row';
+    div.innerHTML = `<input type="text" placeholder="Material necessário...">
+      <button class="btn-remove-item" onclick="GuiaDrawer._removeMaterial(this)"><i class="fa-solid fa-xmark"></i></button>`;
+    c.appendChild(div);
+    div.querySelector('input').focus();
+  },
+
+  _removeMaterial(btn) { btn.closest('.guia-passo-row').remove(); },
+
+  _addMidia() {
+    const c = $('gfMidias');
+    const div = document.createElement('div');
+    div.className = 'guia-passo-row';
+    div.style.cssText = 'flex-wrap:wrap;gap:6px';
+    div.innerHTML = `<select style="border:1px solid var(--gray-200);border-radius:8px;padding:7px;font-size:12px;font-family:inherit">
+        ${['link','video','pdf','imagem','arquivo'].map(t => `<option value="${t}">${t}</option>`).join('')}
+      </select>
+      <input type="text" placeholder="Nome/título" style="flex:1;min-width:100px">
+      <input type="url" placeholder="URL (https://...)" style="flex:2;min-width:140px">
+      <button class="btn-remove-item" onclick="GuiaDrawer._removeMidia(this)"><i class="fa-solid fa-xmark"></i></button>`;
+    c.appendChild(div);
+    div.querySelectorAll('input')[0].focus();
+  },
+
+  _removeMidia(btn) { btn.closest('.guia-passo-row').remove(); },
+
+  _coletarForm() {
+    const passos    = [...$('gfPassos').querySelectorAll('.guia-passo-row input[type=text]')].map(i => i.value.trim()).filter(Boolean);
+    const materiais = [...$('gfMateriais').querySelectorAll('input[type=text]')].map(i => i.value.trim()).filter(Boolean);
+    const midias    = [...$('gfMidias').querySelectorAll('.guia-passo-row')].map(row => {
+      const sel  = row.querySelector('select');
+      const inps = row.querySelectorAll('input');
+      return { tipo: sel?.value||'link', nome: inps[0]?.value.trim()||'', url: inps[1]?.value.trim()||'' };
+    }).filter(m => m.url);
+    return {
+      titulo:          ($('gfTitulo')?.value||'').trim(),
+      categoria:       ($('gfCategoria')?.value||'Geral').trim(),
+      objetivo:        $('gfObjetivo')?.value||'',
+      tempo_estimado:  $('gfTempo')?.value||'',
+      dicas:           $('gfDicas')?.value||'',
+      erros_comuns:    $('gfErros')?.value||'',
+      titulo_atividade: this.tituloAtividade || '',
+      passos, materiais, midias,
+      usuario: UserProfile.get()?.name || '',
+    };
+  },
+
+  async salvar() {
+    const data = this._coletarForm();
+    if (!data.titulo) { showToast('Informe o título do guia.', 'warning'); return; }
+    try {
+      if (this.guia?.id) {
+        await fetch(`/api/guias/${this.guia.id}`, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)
+        });
+        showToast('Guia atualizado!', 'success');
+        const updated = await fetch(`/api/guias/${this.guia.id}`).then(r => r.json());
+        this.guia = updated;
+      } else {
+        const res = await fetch('/api/guias', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)
+        }).then(r => r.json());
+        showToast('Guia criado com sucesso!', 'success');
+        const updated = await fetch(`/api/guias/${res.id}`).then(r => r.json());
+        this.guia = updated;
+      }
+      this.modoEdicao = false;
+      $('guiaEditBtn').style.display = '';
+      $('guiaFavBtn').style.display = '';
+      $('guiaDrawerTitle').textContent = this.guia.titulo;
+      this._renderGuia();
+      if (typeof GuiaBiblioteca !== 'undefined') GuiaBiblioteca.load();
+      Dashboard._marcarGuias([{titulo: this.tituloAtividade || ''}]);
+    } catch(e) {
+      showToast('Erro ao salvar guia.', 'error');
+    }
+  },
+
+  async selecionarDaBiblioteca() {
+    // Abre modal com lista de guias para vincular
+    try {
+      const res = await fetch('/api/guias').then(r => r.json());
+      this._todosGuias = res.guias || [];
+      this._renderModalSelecionar(this._todosGuias);
+      $('guiaSelecionarModal').style.display = 'flex';
+    } catch(e) { showToast('Erro ao carregar biblioteca.', 'error'); }
+  },
+
+  _renderModalSelecionar(guias) {
+    $('guiaSelecionarList').innerHTML = guias.length
+      ? guias.map(g => `
+          <div class="guia-select-item" onclick="GuiaDrawer._vincularExistente(${g.id})">
+            <div style="flex:1">
+              <div class="guia-select-item-title">${g.titulo}</div>
+              <div class="guia-select-item-cat">${g.categoria||'Geral'} · v${g.versao||1}</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color:var(--gray-400)"></i>
+          </div>`).join('')
+      : '<p style="font-size:13px;color:var(--gray-400);padding:16px 0">Nenhum guia na biblioteca ainda.</p>';
+  },
+
+  filtrarModal() {
+    const q = ($('guiaSelecionarSearch')?.value||'').toLowerCase();
+    const filtrados = this._todosGuias.filter(g => (g.titulo||'').toLowerCase().includes(q));
+    this._renderModalSelecionar(filtrados);
+  },
+
+  fecharModal() { $('guiaSelecionarModal').style.display = 'none'; },
+
+  async _vincularExistente(guiaId) {
+    this.fecharModal();
+    try {
+      await fetch(`/api/guias/${guiaId}/vincular`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({titulo_atividade: this.tituloAtividade || ''})
+      });
+      showToast('Guia vinculado à atividade!', 'success');
+      this.fechar();
+      await this.abrir(this.tituloAtividade);
+    } catch(e) { showToast('Erro ao vincular.', 'error'); }
+  },
+};
+
+// ── GUIA BIBLIOTECA ───────────────────────────────────────────────────────
+
+const GuiaBiblioteca = {
+  guias:        [],
+  soFavoritos:  false,
+
+  async load() {
+    await this._carregarCategorias();
+    await this.buscar();
+  },
+
+  async _carregarCategorias() {
+    try {
+      const res = await fetch('/api/guias/categorias').then(r => r.json());
+      const cats = res.categorias || [];
+      const sel = $('bibCategoria');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Todas as categorias</option>' +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    } catch(_) {}
+  },
+
+  async buscar() {
+    const search    = ($('bibSearch')?.value||'').trim();
+    const categoria = $('bibCategoria')?.value||'';
+    const favParam  = this.soFavoritos ? '&favoritos=1' : '';
+    try {
+      const res = await fetch(`/api/guias?search=${encodeURIComponent(search)}&categoria=${encodeURIComponent(categoria)}${favParam}`).then(r => r.json());
+      this.guias = res.guias || [];
+      this._render();
+    } catch(e) {
+      $('bibGrid').innerHTML = '<p style="color:var(--gray-400);font-size:13px">Erro ao carregar guias.</p>';
+    }
+  },
+
+  toggleFav() {
+    this.soFavoritos = !this.soFavoritos;
+    const btn = $('bibFavBtn');
+    if (btn) btn.classList.toggle('ativo', this.soFavoritos);
+    this.buscar();
+  },
+
+  _render() {
+    const grid = $('bibGrid');
+    if (!grid) return;
+    if (!this.guias.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px">
+        <i class="fa-regular fa-folder-open" style="font-size:36px;color:var(--gray-200);display:block;margin-bottom:12px"></i>
+        <p style="font-size:14px;color:var(--gray-400)">Nenhum guia encontrado.<br>Crie o primeiro guia clicando em "Novo Guia".</p>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = this.guias.map(g => `
+      <div class="bib-card" onclick="GuiaBiblioteca.abrir(${g.id})">
+        <div class="bib-card-header">
+          <div class="bib-card-title">${g.titulo}</div>
+          ${g.favorito ? '<i class="fa-solid fa-star bib-card-fav"></i>' : ''}
+        </div>
+        ${g.objetivo ? `<div class="bib-card-objetivo">${g.objetivo.substring(0,100)}${g.objetivo.length>100?'…':''}</div>` : ''}
+        <div class="bib-card-footer">
+          <span class="bib-card-chip cat"><i class="fa-solid fa-tag"></i> ${g.categoria||'Geral'}</span>
+          ${g.mais_usado ? `<span class="bib-card-chip uso"><i class="fa-solid fa-fire"></i> ${g.mais_usado}× usado</span>` : ''}
+          <span class="bib-card-chip ver">v${g.versao||1}</span>
+        </div>
+        <div class="bib-card-actions" onclick="event.stopPropagation()">
+          <button onclick="GuiaBiblioteca.editar(${g.id})"><i class="fa-solid fa-pen"></i> Editar</button>
+          <button onclick="GuiaBiblioteca.duplicar(${g.id})"><i class="fa-solid fa-copy"></i> Duplicar</button>
+          <button onclick="GuiaBiblioteca.excluir(${g.id}, '${(g.titulo||'').replace(/'/g,'&#39;')}')">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>`).join('');
+  },
+
+  abrir(id) {
+    GuiaDrawer.abrirPorId(id);
+  },
+
+  editar(id) {
+    GuiaDrawer.abrirPorId(id).then(() => {
+      setTimeout(() => GuiaDrawer.entrarEdicao(), 300);
+    });
+  },
+
+  async duplicar(id) {
+    const usuario = UserProfile.get()?.name || '';
+    try {
+      await fetch(`/api/guias/${id}/duplicar`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({usuario})
+      });
+      showToast('Guia duplicado!', 'success');
+      this.buscar();
+    } catch(e) { showToast('Erro ao duplicar.', 'error'); }
+  },
+
+  async excluir(id, titulo) {
+    if (!confirm(`Excluir o guia "${titulo}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await fetch(`/api/guias/${id}`, {method:'DELETE'});
+      showToast('Guia excluído.', '');
+      this.buscar();
+    } catch(e) { showToast('Erro ao excluir.', 'error'); }
+  },
+
+  novo() {
+    GuiaDrawer.tituloAtividade = null;
+    GuiaDrawer.guia = null;
+    $('guiaDrawer').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    $('guiaDrawerTitle').textContent = 'Criar Guia';
+    $('guiaEditBtn').style.display = 'none';
+    $('guiaFavBtn').style.display = 'none';
+    GuiaDrawer._renderForm({});
   },
 };
 

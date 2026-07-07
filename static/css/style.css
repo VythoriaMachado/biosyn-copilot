@@ -668,3 +668,343 @@ body {
   .page-hero { flex-direction: column; align-items: flex-start; gap: 12px; }
   .topbar { padding: 0 16px; }
 }
+
+/* ─── BOTÃO "COMO FAZER" NA ACTIVITY ROW ──────────────────────────────────── */
+.btn-como-fazer {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--sky); color: white;
+  border: none; border-radius: 20px;
+  padding: 4px 12px; font-size: 11px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: background .18s, transform .12s;
+  font-family: inherit;
+}
+.btn-como-fazer:hover { background: var(--navy); transform: scale(1.04); }
+.btn-como-fazer i { font-size: 10px; }
+.btn-como-fazer.tem-guia { background: #E8F4FD; color: var(--navy); }
+.btn-como-fazer.tem-guia:hover { background: var(--sky); color: white; }
+
+/* ─── GUIA DRAWER ──────────────────────────────────────────────────────────── */
+.guia-drawer {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; justify-content: flex-end;
+}
+.guia-drawer-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(2px);
+  animation: fadeIn .2s ease;
+}
+.guia-drawer-panel {
+  position: relative; z-index: 1;
+  width: min(560px, 95vw);
+  background: white;
+  height: 100vh;
+  display: flex; flex-direction: column;
+  box-shadow: -4px 0 32px rgba(0,0,0,.16);
+  animation: slideInRight .25s ease;
+  overflow: hidden;
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.guia-drawer-header {
+  padding: 18px 20px 16px;
+  background: var(--navy);
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-shrink: 0;
+}
+.guia-drawer-header-title {
+  display: flex; align-items: center; gap: 10px;
+  color: white; font-size: 15px; font-weight: 700; flex: 1;
+  min-width: 0;
+}
+.guia-drawer-header-title i { color: var(--sky); flex-shrink: 0; }
+.guia-drawer-header-title span { overflow: hidden; text-overflow: ellipsis; }
+.guia-drawer-header-actions {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 10px;
+}
+.guia-drawer-header-actions button {
+  background: rgba(255,255,255,.12); border: none; border-radius: 8px;
+  color: white; width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px; transition: background .15s;
+}
+.guia-drawer-header-actions button:hover { background: rgba(255,255,255,.22); }
+.guia-drawer-header-actions button.fav-ativo { color: #FFD700; }
+
+.guia-drawer-body {
+  flex: 1; overflow-y: auto; padding: 0;
+}
+
+/* tabs */
+.guia-tabs {
+  display: flex; border-bottom: 2px solid var(--gray-200);
+  padding: 0 20px; gap: 4px; flex-shrink: 0; background: white;
+  position: sticky; top: 0; z-index: 2;
+}
+.guia-tab {
+  padding: 12px 14px; font-size: 13px; font-weight: 600;
+  color: var(--gray-600); border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: color .15s, border-color .15s; font-family: inherit;
+  white-space: nowrap;
+}
+.guia-tab.active { color: var(--navy); border-bottom-color: var(--sky); }
+.guia-tab:hover:not(.active) { color: var(--navy); }
+
+.guia-tab-content { display: none; padding: 20px; }
+.guia-tab-content.active { display: block; }
+
+/* seções */
+.guia-section { margin-bottom: 22px; }
+.guia-section-title {
+  font-size: 11px; font-weight: 700; color: var(--sky);
+  text-transform: uppercase; letter-spacing: .8px;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.guia-section-body {
+  font-size: 13px; color: var(--gray-800); line-height: 1.6;
+  background: var(--gray-50); border-radius: 8px; padding: 12px 14px;
+  border: 1px solid var(--gray-200);
+}
+.guia-objetivo { font-size: 14px; font-style: italic; color: var(--navy); }
+.guia-meta {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.guia-meta-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--gray-100); border-radius: 20px;
+  padding: 4px 12px; font-size: 12px; color: var(--gray-800); font-weight: 500;
+}
+.guia-meta-chip i { color: var(--sky); font-size: 11px; }
+
+/* checklist de passos */
+.guia-steps { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.guia-step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; background: white;
+  border: 1px solid var(--gray-200); border-radius: 10px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.guia-step:hover { border-color: var(--sky); background: #F0F9FF; }
+.guia-step.done { background: #F0FFF4; border-color: var(--green); }
+.guia-step.done .guia-step-text { text-decoration: line-through; color: var(--gray-400); }
+.guia-step-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--gray-200); color: var(--gray-600);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.guia-step.done .guia-step-num { background: var(--green); color: white; }
+.guia-step-text { font-size: 13px; line-height: 1.5; flex: 1; }
+.guia-step-check { flex-shrink: 0; font-size: 14px; color: var(--gray-400); }
+.guia-step.done .guia-step-check { color: var(--green); }
+
+.guia-progress-bar-wrap { margin-bottom: 16px; }
+.guia-progress-label {
+  font-size: 12px; color: var(--gray-600); margin-bottom: 6px;
+  display: flex; justify-content: space-between;
+}
+.guia-progress-bar {
+  height: 5px; background: var(--gray-200); border-radius: 3px; overflow: hidden;
+}
+.guia-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--sky), var(--green));
+  border-radius: 3px; transition: width .4s ease;
+}
+
+/* lista de materiais */
+.guia-materiais { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.guia-materiais li {
+  padding: 7px 12px; background: var(--gray-50);
+  border-radius: 6px; font-size: 13px;
+  border-left: 3px solid var(--sky);
+}
+
+/* mídias */
+.guia-midias-list { display: flex; flex-direction: column; gap: 8px; }
+.guia-midia-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--gray-50);
+  border: 1px solid var(--gray-200); border-radius: 8px;
+}
+.guia-midia-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.midia-link    { background: #E3F2FD; color: #0D47A1; }
+.midia-video   { background: #FDECEA; color: #C62828; }
+.midia-pdf     { background: #FFF3E0; color: #E65100; }
+.midia-imagem  { background: #F3E5F5; color: #6A1B9A; }
+.midia-arquivo { background: #E8F5E9; color: #2E7D32; }
+.guia-midia-info { flex: 1; min-width: 0; }
+.guia-midia-info a {
+  font-size: 13px; font-weight: 600; color: var(--navy);
+  text-decoration: none; display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.guia-midia-info a:hover { color: var(--sky); text-decoration: underline; }
+.guia-midia-tipo { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .5px; }
+
+/* versões */
+.guia-versoes-list { display: flex; flex-direction: column; gap: 6px; }
+.guia-versao-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--gray-50); border-radius: 8px;
+  font-size: 12px; color: var(--gray-600);
+}
+.guia-versao-badge {
+  background: var(--navy); color: white;
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700;
+}
+
+/* estado vazio no drawer */
+.guia-empty-state {
+  padding: 40px 24px; text-align: center;
+}
+.guia-empty-state i { font-size: 40px; color: var(--gray-200); margin-bottom: 14px; display: block; }
+.guia-empty-state h3 { font-size: 16px; color: var(--navy); margin-bottom: 8px; }
+.guia-empty-state p  { font-size: 13px; color: var(--gray-600); margin-bottom: 20px; line-height: 1.5; }
+
+/* ─── FORM DE EDIÇÃO DO GUIA ───────────────────────────────────────────────── */
+.guia-form { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.guia-form-group { display: flex; flex-direction: column; gap: 5px; }
+.guia-form-label {
+  font-size: 11px; font-weight: 700; color: var(--navy);
+  text-transform: uppercase; letter-spacing: .7px;
+}
+.guia-form input, .guia-form textarea, .guia-form select {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--gray-200); border-radius: 8px;
+  font-size: 13px; font-family: inherit; color: var(--gray-800);
+  background: white; outline: none; transition: border-color .15s;
+}
+.guia-form input:focus, .guia-form textarea:focus, .guia-form select:focus {
+  border-color: var(--sky);
+}
+.guia-form textarea { resize: vertical; min-height: 80px; }
+
+.guia-passos-editor { display: flex; flex-direction: column; gap: 6px; }
+.guia-passo-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.guia-passo-row input {
+  flex: 1; padding: 8px 10px;
+  border: 1px solid var(--gray-200); border-radius: 8px;
+  font-size: 13px; font-family: inherit;
+}
+.guia-passo-row input:focus { outline: none; border-color: var(--sky); }
+.guia-passo-row .btn-remove-item {
+  background: none; border: none; color: var(--red);
+  cursor: pointer; padding: 6px; border-radius: 6px;
+  font-size: 14px; flex-shrink: 0;
+  transition: background .15s;
+}
+.guia-passo-row .btn-remove-item:hover { background: #FDECEA; }
+.btn-add-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gray-100); border: 1px dashed var(--gray-400);
+  border-radius: 8px; padding: 7px 12px; font-size: 12px;
+  color: var(--gray-600); cursor: pointer; font-family: inherit;
+  transition: border-color .15s, color .15s;
+}
+.btn-add-item:hover { border-color: var(--sky); color: var(--sky); }
+
+.guia-form-actions {
+  display: flex; gap: 10px; padding: 16px 20px;
+  border-top: 1px solid var(--gray-200); flex-shrink: 0;
+  background: white;
+}
+
+/* ─── BIBLIOTECA DE GUIAS ──────────────────────────────────────────────────── */
+.bib-toolbar {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;
+}
+.bib-search-wrap {
+  flex: 1; min-width: 200px;
+  display: flex; align-items: center; gap: 8px;
+  background: white; border: 1px solid var(--gray-200); border-radius: 10px;
+  padding: 0 14px; height: 40px;
+}
+.bib-search-wrap i { color: var(--gray-400); }
+.bib-search-wrap input {
+  flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit;
+}
+.bib-select {
+  height: 40px; padding: 0 12px; border: 1px solid var(--gray-200);
+  border-radius: 10px; background: white; font-size: 13px; font-family: inherit;
+  color: var(--gray-800); outline: none; cursor: pointer;
+}
+.bib-toggle-fav {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 40px; padding: 0 14px; border: 1px solid var(--gray-200);
+  border-radius: 10px; background: white; font-size: 13px; cursor: pointer;
+  color: var(--gray-600); font-family: inherit; white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+.bib-toggle-fav.ativo { border-color: #FFD700; color: #B8860B; background: #FFFBEA; }
+.bib-toggle-fav i { color: #FFD700; }
+
+.bib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.bib-card {
+  background: white; border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow); padding: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+  cursor: pointer; transition: box-shadow .18s, border-color .18s;
+  position: relative;
+}
+.bib-card:hover { box-shadow: var(--shadow-md); border-color: var(--sky); }
+.bib-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.bib-card-title {
+  font-size: 14px; font-weight: 700; color: var(--navy);
+  line-height: 1.3; flex: 1;
+}
+.bib-card-fav { font-size: 16px; color: #FFD700; flex-shrink: 0; }
+.bib-card-objetivo { font-size: 12px; color: var(--gray-600); line-height: 1.4; }
+.bib-card-footer {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: auto; padding-top: 6px;
+}
+.bib-card-chip {
+  font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  background: var(--gray-100); color: var(--gray-600);
+}
+.bib-card-chip.cat { background: #E8F4FD; color: var(--navy); }
+.bib-card-chip.uso { background: #E8F5E9; color: #2E7D32; }
+.bib-card-chip.ver { background: var(--gray-100); color: var(--gray-600); }
+.bib-card-actions {
+  display: flex; gap: 6px; margin-top: 4px;
+}
+.bib-card-actions button {
+  flex: 1; padding: 6px; border: 1px solid var(--gray-200);
+  border-radius: 8px; background: white; font-size: 11px;
+  cursor: pointer; font-family: inherit; color: var(--gray-600);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.bib-card-actions button:hover { border-color: var(--sky); color: var(--sky); }
+
+/* modal selecionar guia */
+.guia-select-modal {
+  padding: 20px;
+}
+.guia-select-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.guia-select-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border: 1px solid var(--gray-200);
+  border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.guia-select-item:hover { border-color: var(--sky); background: #F0F9FF; }
+.guia-select-item-title { font-size: 13px; font-weight: 600; color: var(--navy); }
+.guia-select-item-cat  { font-size: 11px; color: var(--gray-400); }
+
