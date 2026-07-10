@@ -49,29 +49,8 @@
     </div>
   </div>
   <nav class="sidebar-nav">
-    <a href="#" class="nav-item active" data-view="dashboard">
-      <i class="fa-solid fa-house"></i><span>Dashboard</span>
-    </a>
-    <a href="#" class="nav-item" data-view="checklist">
-      <i class="fa-solid fa-list-check"></i><span>Checklist Diário</span>
-    </a>
-    <a href="#" class="nav-item" data-view="planning">
-      <i class="fa-solid fa-calendar-days"></i><span>Planejamento</span>
-    </a>
-    <a href="#" class="nav-item" data-view="weekly">
-      <i class="fa-solid fa-chart-bar"></i><span>Dashboard Semanal</span>
-    </a>
-    <a href="#" class="nav-item" data-view="managerial">
-      <i class="fa-solid fa-chart-line"></i><span>Painel Gerencial</span>
-    </a>
-    <a href="#" class="nav-item" data-view="insights">
-      <i class="fa-solid fa-lightbulb"></i><span>Insights IA</span>
-    </a>
-    <a href="#" class="nav-item" data-view="biblioteca">
-      <i class="fa-solid fa-book-open"></i><span>Guias (Como Fazer)</span>
-    </a>
-    <a href="#" class="nav-item" data-view="desenvolvimento">
-      <i class="fa-solid fa-chart-line"></i><span>Meu Desenvolvimento</span>
+    <a href="#" class="nav-item active" data-view="workhub" onclick="WorkHub.open(); return false;">
+      <i class="fa-solid fa-grid-2"></i><span>WorkHub</span>
     </a>
     <a href="#" class="nav-item nav-item-gestor" data-view="gestor" onclick="AdminMode.toggle(); return false;" title="Acesso Gestor — visualizar dados da equipe">
       <i class="fa-solid fa-users-gear"></i><span>Modo Gestor</span>
@@ -130,7 +109,7 @@
   <header class="topbar">
     <div class="topbar-left">
       <button class="btn-icon" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
-      <div class="topbar-title" id="viewTitle">Dashboard do Dia</div>
+      <div class="topbar-title" id="viewTitle">WorkHub</div>
     </div>
     <div class="topbar-right">
       <div class="topbar-date" id="topbarDate"></div>
@@ -139,6 +118,34 @@
       </button>
     </div>
   </header>
+
+  <!-- WORKHUB TABS -->
+  <nav class="workhub-tabs" id="workhubTabs">
+    <button class="wh-tab active" data-view="dashboard"     onclick="WorkHub.switchTab('dashboard',this)">
+      <i class="fa-solid fa-house"></i> Dashboard
+    </button>
+    <button class="wh-tab" data-view="checklist"            onclick="WorkHub.switchTab('checklist',this)">
+      <i class="fa-solid fa-list-check"></i> Checklist
+    </button>
+    <button class="wh-tab" data-view="planning"             onclick="WorkHub.switchTab('planning',this)">
+      <i class="fa-solid fa-calendar-days"></i> Planejamento
+    </button>
+    <button class="wh-tab" data-view="weekly"               onclick="WorkHub.switchTab('weekly',this)">
+      <i class="fa-solid fa-chart-bar"></i> Semanal
+    </button>
+    <button class="wh-tab" data-view="managerial"           onclick="WorkHub.switchTab('managerial',this)">
+      <i class="fa-solid fa-chart-line"></i> Painel Gerencial
+    </button>
+    <button class="wh-tab" data-view="insights"             onclick="WorkHub.switchTab('insights',this)">
+      <i class="fa-solid fa-lightbulb"></i> Insights IA
+    </button>
+    <button class="wh-tab" data-view="biblioteca"           onclick="WorkHub.switchTab('biblioteca',this)">
+      <i class="fa-solid fa-book-open"></i> Guias
+    </button>
+    <button class="wh-tab" data-view="desenvolvimento"      onclick="WorkHub.switchTab('desenvolvimento',this)">
+      <i class="fa-solid fa-rocket"></i> Meu Desenvolvimento
+    </button>
+  </nav>
 
   <!-- ═══════════════════ GUIA DRAWER ═══════════════════════════ -->
   <div id="guiaDrawer" class="guia-drawer" style="display:none">

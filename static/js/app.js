@@ -55,56 +55,42 @@ const App = {
     const now = new Date();
     $('topbarDate').textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
-    // Sidebar nav
-    document.querySelectorAll('.nav-item').forEach(el => {
-      el.addEventListener('click', e => {
-        e.preventDefault();
-        const view = el.dataset.view;
-        App.switchView(view);
-      });
-    });
-
     // Sidebar toggle
     $('sidebarToggle').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('collapsed');
     });
 
     // Load initial view
-    App.switchView('dashboard');
+    WorkHub.open();
   },
 
   switchView(name) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const viewEl = $(`view-${name}`);
     if (viewEl) viewEl.classList.add('active');
-    const navEl = document.querySelector(`.nav-item[data-view="${name}"]`);
-    if (navEl) navEl.classList.add('active');
 
-    const titles = {
-      dashboard:  'Dashboard do Dia',
-      checklist:  'Checklist Diário',
-      planning:   'Planejamento',
-      weekly:     'Dashboard Semanal',
-      managerial: 'Painel Gerencial',
-      insights:   'Insights de IA',
-      biblioteca:     'Biblioteca de Guias',
-      desenvolvimento: 'Meu Desenvolvimento',
-    };
-    $('viewTitle').textContent = titles[name] || '';
+    // sync workhub tab highlight
+    document.querySelectorAll('.wh-tab').forEach(t => t.classList.remove('active'));
+    const tabEl = document.querySelector(`.wh-tab[data-view="${name}"]`);
+    if (tabEl) tabEl.classList.add('active');
+
+    // keep WorkHub nav item always active
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const whNav = document.querySelector('.nav-item[data-view="workhub"]');
+    if (whNav) whNav.classList.add('active');
 
     const exportBtn = $('btnExportWeekly');
     exportBtn.style.display = name === 'weekly' ? 'flex' : 'none';
     exportBtn.onclick = name === 'weekly' ? () => Weekly.export() : null;
 
     this.currentView = name;
-    if (name === 'dashboard')      Dashboard.load();
-    if (name === 'checklist')      Checklist.init();
-    if (name === 'planning')       Planning.load();
-    if (name === 'weekly')         Weekly.load();
-    if (name === 'managerial')     Managerial.load();
-    if (name === 'insights')       InsightsView.load(30);
-    if (name === 'biblioteca')     GuiaBiblioteca.load();
+    if (name === 'dashboard')       Dashboard.load();
+    if (name === 'checklist')       Checklist.init();
+    if (name === 'planning')        Planning.load();
+    if (name === 'weekly')          Weekly.load();
+    if (name === 'managerial')      Managerial.load();
+    if (name === 'insights')        InsightsView.load(30);
+    if (name === 'biblioteca')      GuiaBiblioteca.load();
     if (name === 'desenvolvimento') MeuDev.load();
   },
 
@@ -2104,6 +2090,26 @@ const AdminMode = {
   applyFilter() {
     this.filtroUsuario = $('gestorUserFilter').value;
     App.switchView(App.currentView);
+  },
+};
+
+// ── WORKHUB ───────────────────────────────────────────────────────────────
+const WorkHub = {
+  open() {
+    // Mark workhub nav active
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const whNav = document.querySelector('.nav-item[data-view="workhub"]');
+    if (whNav) whNav.classList.add('active');
+    $('viewTitle').textContent = 'WorkHub';
+    // Show last active tab or default to dashboard
+    const last = localStorage.getItem('workhub_last_tab') || 'dashboard';
+    this.switchTab(last, document.querySelector(`.wh-tab[data-view="${last}"]`));
+  },
+
+  switchTab(name, btn) {
+    localStorage.setItem('workhub_last_tab', name);
+    App.switchView(name);
+    // sync tab button active state (switchView already does this via wh-tab selector)
   },
 };
 
