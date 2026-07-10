@@ -70,6 +70,9 @@
     <a href="#" class="nav-item" data-view="biblioteca">
       <i class="fa-solid fa-book-open"></i><span>Guias (Como Fazer)</span>
     </a>
+    <a href="#" class="nav-item" data-view="desenvolvimento">
+      <i class="fa-solid fa-chart-line"></i><span>Meu Desenvolvimento</span>
+    </a>
     <a href="#" class="nav-item nav-item-gestor" data-view="gestor" onclick="AdminMode.toggle(); return false;" title="Acesso Gestor — visualizar dados da equipe">
       <i class="fa-solid fa-users-gear"></i><span>Modo Gestor</span>
     </a>
@@ -471,6 +474,336 @@
       <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando guias...</div>
     </div>
   </section>
+
+  <!-- ── MEU DESENVOLVIMENTO ── -->
+  <section class="view" id="view-desenvolvimento">
+    <div class="page-hero">
+      <div>
+        <h2><i class="fa-solid fa-chart-line" style="color:var(--sky);margin-right:8px"></i>Meu Desenvolvimento</h2>
+        <p style="opacity:.7;font-size:14px">Sua trajetória profissional — formações, competências e objetivos de carreira</p>
+      </div>
+      <button class="btn-primary" onclick="MeuDev.novaFormacao()">
+        <i class="fa-solid fa-plus"></i> Nova Formação
+      </button>
+    </div>
+
+    <!-- tabs -->
+    <div class="dev-tabs">
+      <button class="dev-tab active" data-tab="visao-geral" onclick="MeuDev.switchTab('visao-geral',this)">
+        <i class="fa-solid fa-house-chimney"></i> Visão Geral
+      </button>
+      <button class="dev-tab" data-tab="formacoes" onclick="MeuDev.switchTab('formacoes',this)">
+        <i class="fa-solid fa-graduation-cap"></i> Formações
+      </button>
+      <button class="dev-tab" data-tab="competencias" onclick="MeuDev.switchTab('competencias',this)">
+        <i class="fa-solid fa-bolt"></i> Competências
+      </button>
+      <button class="dev-tab" data-tab="pdi" onclick="MeuDev.switchTab('pdi',this)">
+        <i class="fa-solid fa-bullseye"></i> PDI
+      </button>
+      <button class="dev-tab" data-tab="conquistas" onclick="MeuDev.switchTab('conquistas',this)">
+        <i class="fa-solid fa-trophy"></i> Conquistas
+      </button>
+    </div>
+
+    <!-- VISÃO GERAL -->
+    <div class="dev-panel active" id="devTab-visao-geral">
+      <div class="dev-kpi-row" id="devKpis">
+        <div class="dev-kpi"><div class="dev-kpi-val" id="devKpiCursos">—</div><div class="dev-kpi-lab">Cursos / Formações</div></div>
+        <div class="dev-kpi"><div class="dev-kpi-val" id="devKpiAndamento">—</div><div class="dev-kpi-lab">Em Andamento</div></div>
+        <div class="dev-kpi"><div class="dev-kpi-val" id="devKpiHoras">—h</div><div class="dev-kpi-lab">Horas de Capacitação</div></div>
+        <div class="dev-kpi"><div class="dev-kpi-val" id="devKpiCert">—</div><div class="dev-kpi-lab">Certificações</div></div>
+      </div>
+
+      <!-- objetivo -->
+      <div class="dev-card" id="devObjetivoCard">
+        <div class="dev-card-header">
+          <span><i class="fa-solid fa-star" style="color:var(--sky)"></i> Objetivo Profissional</span>
+          <button class="dev-btn-edit" onclick="MeuDev.editarObjetivo()"><i class="fa-solid fa-pen"></i> Editar</button>
+        </div>
+        <div id="devObjetivoBody" class="dev-objetivo-body">
+          <div class="dev-empty-inline">Defina seu objetivo profissional para orientar seu desenvolvimento. <button class="dev-link" onclick="MeuDev.editarObjetivo()">Configurar agora</button></div>
+        </div>
+      </div>
+
+      <!-- em andamento -->
+      <div class="dev-card">
+        <div class="dev-card-header">
+          <span><i class="fa-solid fa-spinner" style="color:var(--amber)"></i> Em Andamento</span>
+          <button class="dev-btn-edit" onclick="MeuDev.switchTab('formacoes', document.querySelector('[data-tab=formacoes]'))">Ver todas</button>
+        </div>
+        <div id="devAndamentoList">
+          <div class="dev-empty-inline">Nenhuma formação em andamento.</div>
+        </div>
+      </div>
+
+      <!-- recomendações -->
+      <div class="dev-card">
+        <div class="dev-card-header">
+          <span><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--purple,#6B4FBB)"></i> Recomendações para Você</span>
+        </div>
+        <div id="devRecomendacoes" class="dev-rec-list">
+          <div class="dev-rec-item"><i class="fa-solid fa-circle-check" style="color:var(--sky)"></i><div><strong>Academia BioSyn</strong> — explore os cursos disponíveis na plataforma interna.</div></div>
+          <div class="dev-rec-item"><i class="fa-solid fa-circle-check" style="color:var(--sky)"></i><div><strong>Registre seu primeiro curso</strong> — clique em "Nova Formação" para começar seu histórico.</div></div>
+          <div class="dev-rec-item"><i class="fa-solid fa-circle-check" style="color:var(--sky)"></i><div><strong>Crie seu PDI</strong> — defina metas de curto, médio e longo prazo na aba PDI.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORMAÇÕES -->
+    <div class="dev-panel" id="devTab-formacoes">
+      <div class="dev-toolbar">
+        <div class="dev-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="devFormSearch" placeholder="Buscar formação..." oninput="MeuDev.filtrarFormacoes()">
+        </div>
+        <select class="dev-select" id="devFormTipo" onchange="MeuDev.filtrarFormacoes()">
+          <option value="">Todos os tipos</option>
+          <option value="curso_interno">Curso Interno</option>
+          <option value="curso_externo">Curso Externo</option>
+          <option value="academia_biosyn">Academia BioSyn</option>
+          <option value="graduacao">Graduação</option>
+          <option value="pos">Pós-graduação</option>
+          <option value="mba">MBA</option>
+          <option value="mestrado">Mestrado</option>
+          <option value="doutorado">Doutorado</option>
+          <option value="tecnico">Ensino Técnico</option>
+          <option value="certificacao">Certificação</option>
+          <option value="idioma">Idioma</option>
+          <option value="workshop">Workshop / Seminário</option>
+          <option value="livro">Livro</option>
+          <option value="mentoria">Mentoria</option>
+          <option value="outro">Outro</option>
+        </select>
+        <select class="dev-select" id="devFormStatus" onchange="MeuDev.filtrarFormacoes()">
+          <option value="">Todos os status</option>
+          <option value="planejado">Planejado</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="concluido">Concluído</option>
+          <option value="pausado">Pausado</option>
+        </select>
+      </div>
+      <div id="devFormList" class="dev-form-list">
+        <div class="dev-empty-state"><i class="fa-solid fa-graduation-cap"></i><p>Nenhuma formação registrada ainda.</p><button class="btn-primary" onclick="MeuDev.novaFormacao()"><i class="fa-solid fa-plus"></i> Adicionar primeira formação</button></div>
+      </div>
+    </div>
+
+    <!-- COMPETÊNCIAS -->
+    <div class="dev-panel" id="devTab-competencias">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn-primary" onclick="MeuDev.novaCompetencia()"><i class="fa-solid fa-plus"></i> Nova Competência</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <h4 class="dev-section-title"><i class="fa-solid fa-laptop-code"></i> Técnicas</h4>
+          <div id="devCompTec" class="dev-comp-list"></div>
+        </div>
+        <div>
+          <h4 class="dev-section-title"><i class="fa-solid fa-brain"></i> Comportamentais</h4>
+          <div id="devCompComp" class="dev-comp-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PDI -->
+    <div class="dev-panel" id="devTab-pdi">
+      <div id="devPdiBody">
+        <div class="dev-empty-state">
+          <i class="fa-solid fa-bullseye"></i>
+          <p>Seu Plano de Desenvolvimento Individual ainda não foi criado.</p>
+          <button class="btn-primary" onclick="MeuDev.criarPdi()"><i class="fa-solid fa-plus"></i> Criar PDI</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONQUISTAS -->
+    <div class="dev-panel" id="devTab-conquistas">
+      <div id="devConquistasList" class="dev-badges-grid">
+        <div class="dev-badge locked"><div class="dev-badge-icon">🎓</div><div class="dev-badge-name">Primeiro Diploma</div><div class="dev-badge-desc">Conclua sua primeira formação acadêmica</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">⚡</div><div class="dev-badge-name">5 Cursos</div><div class="dev-badge-desc">Registre 5 cursos concluídos</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">🔥</div><div class="dev-badge-name">100 Horas</div><div class="dev-badge-desc">Acumule 100h de capacitação</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">🌐</div><div class="dev-badge-name">Multilíngue</div><div class="dev-badge-desc">Registre 2 ou mais idiomas</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">🏅</div><div class="dev-badge-name">Certificado</div><div class="dev-badge-desc">Obtenha uma certificação válida</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">📖</div><div class="dev-badge-name">Leitor Ativo</div><div class="dev-badge-desc">Registre 3 livros lidos</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">🎯</div><div class="dev-badge-name">PDI Completo</div><div class="dev-badge-desc">Preencha todas as metas do PDI</div></div>
+        <div class="dev-badge locked"><div class="dev-badge-icon">🤝</div><div class="dev-badge-name">Mentor</div><div class="dev-badge-desc">Registre uma mentoria como mentor</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL NOVA FORMAÇÃO -->
+  <div id="devFormModal" class="dev-modal-overlay" style="display:none" onclick="if(event.target===this)MeuDev.fecharModal()">
+    <div class="dev-modal">
+      <div class="dev-modal-header">
+        <h3 id="devModalTitle">Nova Formação</h3>
+        <button class="dev-modal-close" onclick="MeuDev.fecharModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dev-modal-body">
+        <input type="hidden" id="devFormId">
+        <div class="dev-form-row">
+          <div class="dev-form-group">
+            <label class="dev-label">Tipo *</label>
+            <select class="dev-input" id="devFTipo" onchange="MeuDev.ajustarCampos()">
+              <option value="curso_externo">Curso Externo</option>
+              <option value="curso_interno">Curso Interno</option>
+              <option value="academia_biosyn">Academia BioSyn</option>
+              <option value="graduacao">Graduação</option>
+              <option value="pos">Pós-graduação</option>
+              <option value="mba">MBA</option>
+              <option value="mestrado">Mestrado</option>
+              <option value="doutorado">Doutorado</option>
+              <option value="tecnico">Ensino Técnico</option>
+              <option value="certificacao">Certificação</option>
+              <option value="idioma">Idioma</option>
+              <option value="workshop">Workshop / Seminário</option>
+              <option value="livro">Livro</option>
+              <option value="mentoria">Mentoria</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="dev-form-group">
+            <label class="dev-label">Status *</label>
+            <select class="dev-input" id="devFStatus">
+              <option value="planejado">Planejado</option>
+              <option value="em_andamento" selected>Em andamento</option>
+              <option value="concluido">Concluído</option>
+              <option value="pausado">Pausado</option>
+            </select>
+          </div>
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Nome / Título *</label>
+          <input class="dev-input" type="text" id="devFTitulo" placeholder="Ex: MBA em Gestão de Negócios">
+        </div>
+        <div class="dev-form-row">
+          <div class="dev-form-group">
+            <label class="dev-label">Instituição / Plataforma</label>
+            <input class="dev-input" type="text" id="devFInstituicao" placeholder="Ex: Unisul, Udemy, etc.">
+          </div>
+          <div class="dev-form-group" id="devFGrupoHoras">
+            <label class="dev-label">Carga Horária (h)</label>
+            <input class="dev-input" type="number" id="devFHoras" min="0" placeholder="Ex: 360">
+          </div>
+        </div>
+        <div class="dev-form-row">
+          <div class="dev-form-group">
+            <label class="dev-label">Data de Início</label>
+            <input class="dev-input" type="month" id="devFInicio">
+          </div>
+          <div class="dev-form-group">
+            <label class="dev-label">Previsão de Conclusão</label>
+            <input class="dev-input" type="month" id="devFPrev">
+          </div>
+        </div>
+        <div class="dev-form-group" id="devFGrupoPerc">
+          <label class="dev-label">Progresso Atual (%)</label>
+          <input class="dev-input" type="number" id="devFPerc" min="0" max="100" placeholder="0–100">
+        </div>
+        <div class="dev-form-group" id="devFGrupoNivel">
+          <label class="dev-label">Nível de Proficiência (idiomas)</label>
+          <select class="dev-input" id="devFNivel">
+            <option value="">Selecione</option>
+            <option value="A1">A1 — Iniciante</option>
+            <option value="A2">A2 — Básico</option>
+            <option value="B1">B1 — Intermediário</option>
+            <option value="B2">B2 — Intermediário Superior</option>
+            <option value="C1">C1 — Avançado</option>
+            <option value="C2">C2 — Fluente / Nativo</option>
+          </select>
+        </div>
+        <div class="dev-form-group" id="devFGrupoCert">
+          <label class="dev-label">Data de Vencimento (certificações)</label>
+          <input class="dev-input" type="month" id="devFVencimento">
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Link do Certificado / Evidência</label>
+          <input class="dev-input" type="url" id="devFUrl" placeholder="https://...">
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Observações</label>
+          <textarea class="dev-input" id="devFObs" rows="2" placeholder="Notas adicionais..."></textarea>
+        </div>
+      </div>
+      <div class="dev-modal-footer">
+        <button class="dev-btn-cancel" onclick="MeuDev.fecharModal()">Cancelar</button>
+        <button class="btn-primary" onclick="MeuDev.salvarFormacao()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL OBJETIVO -->
+  <div id="devObjetivoModal" class="dev-modal-overlay" style="display:none" onclick="if(event.target===this)MeuDev.fecharModalObjetivo()">
+    <div class="dev-modal" style="max-width:480px">
+      <div class="dev-modal-header">
+        <h3>Objetivo Profissional</h3>
+        <button class="dev-modal-close" onclick="MeuDev.fecharModalObjetivo()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dev-modal-body">
+        <div class="dev-form-group">
+          <label class="dev-label">Cargo Atual</label>
+          <input class="dev-input" type="text" id="devObjCargoAtual" placeholder="Ex: Analista Financeiro">
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Cargo Desejado</label>
+          <input class="dev-input" type="text" id="devObjCargoDesejado" placeholder="Ex: Coordenadora de Controladoria">
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Área de Interesse</label>
+          <input class="dev-input" type="text" id="devObjArea" placeholder="Ex: Financeiro, Controladoria, RH...">
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Objetivo Profissional</label>
+          <textarea class="dev-input" id="devObjTexto" rows="3" placeholder="Descreva seus objetivos de carreira..."></textarea>
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Prazo Estimado</label>
+          <input class="dev-input" type="text" id="devObjPrazo" placeholder="Ex: 24 meses, 2 anos">
+        </div>
+      </div>
+      <div class="dev-modal-footer">
+        <button class="dev-btn-cancel" onclick="MeuDev.fecharModalObjetivo()">Cancelar</button>
+        <button class="btn-primary" onclick="MeuDev.salvarObjetivo()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL COMPETÊNCIA -->
+  <div id="devCompModal" class="dev-modal-overlay" style="display:none" onclick="if(event.target===this)MeuDev.fecharModalComp()">
+    <div class="dev-modal" style="max-width:420px">
+      <div class="dev-modal-header">
+        <h3>Nova Competência</h3>
+        <button class="dev-modal-close" onclick="MeuDev.fecharModalComp()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dev-modal-body">
+        <div class="dev-form-group">
+          <label class="dev-label">Nome da Competência *</label>
+          <input class="dev-input" type="text" id="devCNome" placeholder="Ex: Power BI, Liderança, Excel...">
+        </div>
+        <div class="dev-form-row">
+          <div class="dev-form-group">
+            <label class="dev-label">Tipo</label>
+            <select class="dev-input" id="devCTipo">
+              <option value="tecnica">Técnica</option>
+              <option value="comportamental">Comportamental</option>
+            </select>
+          </div>
+          <div class="dev-form-group">
+            <label class="dev-label">Nível</label>
+            <select class="dev-input" id="devCNivel">
+              <option value="basico">Básico</option>
+              <option value="intermediario">Intermediário</option>
+              <option value="avancado">Avançado</option>
+              <option value="especialista">Especialista</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="dev-modal-footer">
+        <button class="dev-btn-cancel" onclick="MeuDev.fecharModalComp()">Cancelar</button>
+        <button class="btn-primary" onclick="MeuDev.salvarCompetencia()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
 
 </main>
 

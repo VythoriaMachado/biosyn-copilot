@@ -88,7 +88,8 @@ const App = {
       weekly:     'Dashboard Semanal',
       managerial: 'Painel Gerencial',
       insights:   'Insights de IA',
-      biblioteca: 'Biblioteca de Guias',
+      biblioteca:     'Biblioteca de Guias',
+      desenvolvimento: 'Meu Desenvolvimento',
     };
     $('viewTitle').textContent = titles[name] || '';
 
@@ -97,13 +98,14 @@ const App = {
     exportBtn.onclick = name === 'weekly' ? () => Weekly.export() : null;
 
     this.currentView = name;
-    if (name === 'dashboard')  Dashboard.load();
-    if (name === 'checklist')  Checklist.init();
-    if (name === 'planning')   Planning.load();
-    if (name === 'weekly')     Weekly.load();
-    if (name === 'managerial') Managerial.load();
-    if (name === 'insights')   InsightsView.load(30);
-    if (name === 'biblioteca') GuiaBiblioteca.load();
+    if (name === 'dashboard')      Dashboard.load();
+    if (name === 'checklist')      Checklist.init();
+    if (name === 'planning')       Planning.load();
+    if (name === 'weekly')         Weekly.load();
+    if (name === 'managerial')     Managerial.load();
+    if (name === 'insights')       InsightsView.load(30);
+    if (name === 'biblioteca')     GuiaBiblioteca.load();
+    if (name === 'desenvolvimento') MeuDev.load();
   },
 
   loadChecklist() { App.switchView('checklist'); },
@@ -2102,6 +2104,406 @@ const AdminMode = {
   applyFilter() {
     this.filtroUsuario = $('gestorUserFilter').value;
     App.switchView(App.currentView);
+  },
+};
+
+// ── MEU DESENVOLVIMENTO ───────────────────────────────────────────────────
+const MeuDev = {
+  _formacoes: [],
+  _competencias: [],
+  _perfil: null,
+  _pdi: null,
+
+  _storageKey() {
+    const u = UserProfile.get();
+    return 'meudev_' + (u.name || 'user').toLowerCase().replace(/\s+/g,'_');
+  },
+  _load() {
+    try { return JSON.parse(localStorage.getItem(this._storageKey()) || '{}'); } catch { return {}; }
+  },
+  _save(data) {
+    localStorage.setItem(this._storageKey(), JSON.stringify(data));
+  },
+  _getData() {
+    const d = this._load();
+    return {
+      formacoes:    d.formacoes    || [],
+      competencias: d.competencias || [],
+      perfil:       d.perfil       || null,
+      pdi:          d.pdi          || null,
+    };
+  },
+  _setData(key, val) {
+    const d = this._load();
+    d[key] = val;
+    this._save(d);
+  },
+
+  load() {
+    const d = this._getData();
+    this._formacoes    = d.formacoes;
+    this._competencias = d.competencias;
+    this._perfil       = d.perfil;
+    this._pdi          = d.pdi;
+    this._renderKpis();
+    this._renderObjetivo();
+    this._renderAndamento();
+    this._renderFormacoes();
+    this._renderCompetencias();
+    this._renderPdi();
+    this._renderConquistas();
+  },
+
+  switchTab(name, btn) {
+    document.querySelectorAll('.dev-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dev-panel').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    else document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
+    const panel = document.getElementById('devTab-' + name);
+    if (panel) panel.classList.add('active');
+  },
+
+  // ── KPIs ──
+  _renderKpis() {
+    const total    = this._formacoes.length;
+    const andamento = this._formacoes.filter(f => f.status === 'em_andamento').length;
+    const horas    = this._formacoes.reduce((s,f) => s + (parseInt(f.horas)||0), 0);
+    const certs    = this._formacoes.filter(f => f.tipo === 'certificacao' && f.status === 'concluido').length;
+    $('devKpiCursos').textContent   = total;
+    $('devKpiAndamento').textContent = andamento;
+    $('devKpiHoras').textContent    = horas + 'h';
+    $('devKpiCert').textContent     = certs;
+  },
+
+  // ── OBJETIVO ──
+  _renderObjetivo() {
+    const p = this._perfil;
+    const el = $('devObjetivoBody');
+    if (!p || !p.cargoDesejado) {
+      el.innerHTML = `<div class="dev-empty-inline">Defina seu objetivo profissional para orientar seu desenvolvimento. <button class="dev-link" onclick="MeuDev.editarObjetivo()">Configurar agora</button></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="dev-objetivo-grid">
+        <div class="dev-objetivo-item"><label>Cargo Atual</label><span>${p.cargoAtual||'—'}</span></div>
+        <div class="dev-objetivo-item"><label>Cargo Desejado</label><span>${p.cargoDesejado}</span></div>
+        <div class="dev-objetivo-item"><label>Área de Interesse</label><span>${p.area||'—'}</span></div>
+        <div class="dev-objetivo-item"><label>Prazo Estimado</label><span>${p.prazo||'—'}</span></div>
+      </div>
+      ${p.objetivo ? `<div class="dev-objetivo-full">${p.objetivo}</div>` : ''}`;
+  },
+
+  editarObjetivo() {
+    const p = this._perfil || {};
+    $('devObjCargoAtual').value    = p.cargoAtual    || '';
+    $('devObjCargoDesejado').value = p.cargoDesejado || '';
+    $('devObjArea').value          = p.area          || '';
+    $('devObjTexto').value         = p.objetivo      || '';
+    $('devObjPrazo').value         = p.prazo         || '';
+    $('devObjetivoModal').style.display = 'flex';
+  },
+  fecharModalObjetivo() { $('devObjetivoModal').style.display = 'none'; },
+  salvarObjetivo() {
+    const p = {
+      cargoAtual:    $('devObjCargoAtual').value.trim(),
+      cargoDesejado: $('devObjCargoDesejado').value.trim(),
+      area:          $('devObjArea').value.trim(),
+      objetivo:      $('devObjTexto').value.trim(),
+      prazo:         $('devObjPrazo').value.trim(),
+    };
+    this._perfil = p;
+    this._setData('perfil', p);
+    this._renderObjetivo();
+    this.fecharModalObjetivo();
+    showToast('Objetivo salvo!', 'success');
+  },
+
+  // ── ANDAMENTO (visão geral) ──
+  _renderAndamento() {
+    const el = $('devAndamentoList');
+    const lista = this._formacoes.filter(f => f.status === 'em_andamento').slice(0, 4);
+    if (!lista.length) {
+      el.innerHTML = '<div class="dev-empty-inline">Nenhuma formação em andamento.</div>';
+      return;
+    }
+    el.innerHTML = lista.map(f => {
+      const perc = Math.min(100, Math.max(0, parseInt(f.perc)||0));
+      const prev = f.prev ? `Previsão: ${f.prev}` : '';
+      return `<div class="dev-andamento-item">
+        <div class="dev-andamento-top">
+          <span class="dev-andamento-nome">${f.titulo}</span>
+          <span class="dev-andamento-meta">${prev}</span>
+        </div>
+        <div class="dev-andamento-bar"><div class="dev-andamento-fill" style="width:${perc}%"></div></div>
+      </div>`;
+    }).join('');
+  },
+
+  // ── FORMAÇÕES ──
+  _tipoIcon(tipo) {
+    const m = { graduacao:'🎓', pos:'🎓', mba:'🎓', mestrado:'🎓', doutorado:'🎓', certificacao:'🏅', idioma:'🌐', livro:'📖', mentoria:'🤝', workshop:'📋', academia_biosyn:'⭐', curso_interno:'🏢', curso_externo:'💻' };
+    return m[tipo] || '📚';
+  },
+  _chipStatus(s) {
+    const m = { planejado:'dev-chip-planejado', em_andamento:'dev-chip-andamento', concluido:'dev-chip-concluido', pausado:'dev-chip-pausado' };
+    const lab = { planejado:'Planejado', em_andamento:'Em andamento', concluido:'Concluído', pausado:'Pausado' };
+    return `<span class="dev-chip ${m[s]||''}">${lab[s]||s}</span>`;
+  },
+  _tipoLabel(t) {
+    const m = { curso_interno:'Curso Interno', curso_externo:'Curso Externo', academia_biosyn:'Academia BioSyn', graduacao:'Graduação', pos:'Pós-graduação', mba:'MBA', mestrado:'Mestrado', doutorado:'Doutorado', tecnico:'Técnico', certificacao:'Certificação', idioma:'Idioma', workshop:'Workshop', livro:'Livro', mentoria:'Mentoria', outro:'Outro' };
+    return m[t] || t;
+  },
+  _renderFormacoes(lista) {
+    const el = $('devFormList');
+    const data = lista || this._formacoes;
+    if (!data.length) {
+      el.innerHTML = `<div class="dev-empty-state"><i class="fa-solid fa-graduation-cap"></i><p>Nenhuma formação registrada ainda.</p><button class="btn-primary" onclick="MeuDev.novaFormacao()"><i class="fa-solid fa-plus"></i> Adicionar primeira formação</button></div>`;
+      return;
+    }
+    el.innerHTML = data.map((f,i) => {
+      const perc  = Math.min(100, Math.max(0, parseInt(f.perc)||0));
+      const cor   = f.status === 'concluido' ? '#1A9B5C' : f.status === 'pausado' ? '#94A3B8' : '#099CD6';
+      const sub   = [f.instituicao, f.horas ? f.horas+'h' : '', f.prev ? `Previsão: ${f.prev}` : ''].filter(Boolean).join(' · ');
+      const idx   = this._formacoes.indexOf(f) >= 0 ? this._formacoes.indexOf(f) : i;
+      return `<div class="dev-form-item">
+        <div class="dev-form-icon">${this._tipoIcon(f.tipo)}</div>
+        <div class="dev-form-body">
+          <div class="dev-form-titulo">${f.titulo}</div>
+          <div class="dev-form-sub">${sub}</div>
+          ${f.status !== 'planejado' ? `<div class="dev-form-progress"><div class="dev-form-fill" style="width:${perc}%;background:${cor}"></div></div>` : ''}
+          <div class="dev-form-tags">
+            ${this._chipStatus(f.status)}
+            <span class="dev-chip dev-chip-planejado" style="background:#F0F9FF;color:#0369A1">${this._tipoLabel(f.tipo)}</span>
+            ${f.nivel ? `<span class="dev-chip" style="background:#F0FFF4;color:#166534">${f.nivel}</span>` : ''}
+            ${f.url ? `<a href="${f.url}" target="_blank" class="dev-chip" style="background:#FFF7ED;color:#9A3412;text-decoration:none">🔗 Certificado</a>` : ''}
+          </div>
+        </div>
+        <div class="dev-form-actions">
+          <button class="dev-icon-btn" onclick="MeuDev.editarFormacao(${idx})" title="Editar"><i class="fa-solid fa-pen"></i></button>
+          <button class="dev-icon-btn danger" onclick="MeuDev.excluirFormacao(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>`;
+    }).join('');
+  },
+  filtrarFormacoes() {
+    const q    = ($('devFormSearch').value || '').toLowerCase();
+    const tipo = $('devFormTipo').value;
+    const st   = $('devFormStatus').value;
+    const res  = this._formacoes.filter(f =>
+      (!q    || f.titulo.toLowerCase().includes(q) || (f.instituicao||'').toLowerCase().includes(q)) &&
+      (!tipo || f.tipo   === tipo) &&
+      (!st   || f.status === st)
+    );
+    this._renderFormacoes(res);
+  },
+
+  // ── MODAL FORMAÇÃO ──
+  ajustarCampos() {
+    const tipo = $('devFTipo').value;
+    $('devFGrupoNivel').style.display  = tipo === 'idioma'       ? 'flex' : 'none';
+    $('devFGrupoCert').style.display   = tipo === 'certificacao' ? 'flex' : 'none';
+    $('devFGrupoHoras').style.display  = tipo === 'livro'        ? 'none' : 'flex';
+    $('devFGrupoPerc').style.display   = ['livro','mentoria'].includes(tipo) ? 'none' : 'flex';
+  },
+  novaFormacao() {
+    $('devFormId').value   = '';
+    $('devModalTitle').textContent = 'Nova Formação';
+    $('devFTipo').value    = 'curso_externo';
+    $('devFStatus').value  = 'em_andamento';
+    $('devFTitulo').value  = '';
+    $('devFInstituicao').value = '';
+    $('devFHoras').value   = '';
+    $('devFInicio').value  = '';
+    $('devFPrev').value    = '';
+    $('devFPerc').value    = '';
+    $('devFNivel').value   = '';
+    $('devFVencimento').value = '';
+    $('devFUrl').value     = '';
+    $('devFObs').value     = '';
+    this.ajustarCampos();
+    $('devFormModal').style.display = 'flex';
+  },
+  editarFormacao(idx) {
+    const f = this._formacoes[idx];
+    if (!f) return;
+    $('devFormId').value   = idx;
+    $('devModalTitle').textContent = 'Editar Formação';
+    $('devFTipo').value    = f.tipo    || 'curso_externo';
+    $('devFStatus').value  = f.status  || 'em_andamento';
+    $('devFTitulo').value  = f.titulo  || '';
+    $('devFInstituicao').value = f.instituicao || '';
+    $('devFHoras').value   = f.horas   || '';
+    $('devFInicio').value  = f.inicio  || '';
+    $('devFPrev').value    = f.prev    || '';
+    $('devFPerc').value    = f.perc    || '';
+    $('devFNivel').value   = f.nivel   || '';
+    $('devFVencimento').value = f.vencimento || '';
+    $('devFUrl').value     = f.url     || '';
+    $('devFObs').value     = f.obs     || '';
+    this.ajustarCampos();
+    $('devFormModal').style.display = 'flex';
+  },
+  fecharModal() { $('devFormModal').style.display = 'none'; },
+  salvarFormacao() {
+    const titulo = $('devFTitulo').value.trim();
+    if (!titulo) { showToast('Informe o nome da formação.', 'error'); return; }
+    const f = {
+      tipo:        $('devFTipo').value,
+      status:      $('devFStatus').value,
+      titulo,
+      instituicao: $('devFInstituicao').value.trim(),
+      horas:       $('devFHoras').value,
+      inicio:      $('devFInicio').value,
+      prev:        $('devFPrev').value,
+      perc:        $('devFPerc').value || ($('devFStatus').value === 'concluido' ? '100' : '0'),
+      nivel:       $('devFNivel').value,
+      vencimento:  $('devFVencimento').value,
+      url:         $('devFUrl').value.trim(),
+      obs:         $('devFObs').value.trim(),
+      criadoEm:    new Date().toISOString(),
+    };
+    const idxVal = $('devFormId').value;
+    if (idxVal !== '') {
+      this._formacoes[parseInt(idxVal)] = f;
+    } else {
+      this._formacoes.unshift(f);
+    }
+    this._setData('formacoes', this._formacoes);
+    this.fecharModal();
+    this._renderKpis();
+    this._renderAndamento();
+    this._renderFormacoes();
+    this._renderConquistas();
+    showToast('Formação salva!', 'success');
+  },
+  excluirFormacao(idx) {
+    if (!confirm('Excluir esta formação?')) return;
+    this._formacoes.splice(idx, 1);
+    this._setData('formacoes', this._formacoes);
+    this._renderKpis();
+    this._renderAndamento();
+    this._renderFormacoes();
+    this._renderConquistas();
+    showToast('Formação excluída.', 'success');
+  },
+
+  // ── COMPETÊNCIAS ──
+  _renderCompetencias() {
+    const tec  = this._competencias.filter(c => c.tipo === 'tecnica');
+    const comp = this._competencias.filter(c => c.tipo === 'comportamental');
+    const renderList = (lista, elId) => {
+      const el = $(elId);
+      if (!lista.length) { el.innerHTML = '<div class="dev-comp-empty">Nenhuma registrada ainda.</div>'; return; }
+      el.innerHTML = lista.map((c,i) => {
+        const realIdx = this._competencias.indexOf(c);
+        const labNivel = {basico:'Básico',intermediario:'Intermediário',avancado:'Avançado',especialista:'Especialista'};
+        return `<div class="dev-comp-item">
+          <span class="dev-comp-name">${c.nome}</span>
+          <span class="dev-comp-nivel nivel-${c.nivel}">${labNivel[c.nivel]||c.nivel}</span>
+          <button class="dev-icon-btn danger" onclick="MeuDev.excluirCompetencia(${realIdx})"><i class="fa-solid fa-trash"></i></button>
+        </div>`;
+      }).join('');
+    };
+    renderList(tec, 'devCompTec');
+    renderList(comp, 'devCompComp');
+  },
+  novaCompetencia() { $('devCNome').value=''; $('devCTipo').value='tecnica'; $('devCNivel').value='intermediario'; $('devCompModal').style.display='flex'; },
+  fecharModalComp() { $('devCompModal').style.display='none'; },
+  salvarCompetencia() {
+    const nome = $('devCNome').value.trim();
+    if (!nome) { showToast('Informe o nome da competência.', 'error'); return; }
+    this._competencias.push({ nome, tipo: $('devCTipo').value, nivel: $('devCNivel').value });
+    this._setData('competencias', this._competencias);
+    this.fecharModalComp();
+    this._renderCompetencias();
+    showToast('Competência adicionada!', 'success');
+  },
+  excluirCompetencia(idx) {
+    this._competencias.splice(idx, 1);
+    this._setData('competencias', this._competencias);
+    this._renderCompetencias();
+  },
+
+  // ── PDI ──
+  _renderPdi() {
+    const el = $('devPdiBody');
+    const p  = this._pdi;
+    if (!p) {
+      el.innerHTML = `<div class="dev-empty-state"><i class="fa-solid fa-bullseye"></i><p>Seu Plano de Desenvolvimento Individual ainda não foi criado.</p><button class="btn-primary" onclick="MeuDev.criarPdi()"><i class="fa-solid fa-plus"></i> Criar PDI</button></div>`;
+      return;
+    }
+    const metas = [
+      { prazo: 'Curto Prazo', texto: p.curto },
+      { prazo: 'Médio Prazo', texto: p.medio },
+      { prazo: 'Longo Prazo', texto: p.longo },
+    ].filter(m => m.texto);
+    el.innerHTML = `
+      <div class="dev-pdi-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="font-size:14px;font-weight:700;color:var(--navy);margin:0">Plano de Desenvolvimento Individual</h3>
+          <button class="dev-btn-edit" onclick="MeuDev.criarPdi()"><i class="fa-solid fa-pen"></i> Editar</button>
+        </div>
+        <div class="dev-pdi-meta-list">
+          ${metas.map(m => `<div class="dev-pdi-meta"><span class="dev-pdi-meta-prazo">${m.prazo}</span><span class="dev-pdi-meta-texto">${m.texto}</span></div>`).join('')}
+        </div>
+        ${p.obs ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100);font-size:13px;color:var(--gray-500)">${p.obs}</div>` : ''}
+      </div>`;
+  },
+  criarPdi() {
+    const p = this._pdi || {};
+    const html = `<div class="dev-modal-overlay" id="devPdiModal" onclick="if(event.target===this)MeuDev._fecharPdiModal()" style="display:flex">
+      <div class="dev-modal" style="max-width:500px">
+        <div class="dev-modal-header"><h3>Plano de Desenvolvimento Individual</h3><button class="dev-modal-close" onclick="MeuDev._fecharPdiModal()"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="dev-modal-body">
+          <div class="dev-form-group"><label class="dev-label">Meta de Curto Prazo (6 meses)</label><textarea class="dev-input" id="devPdiCurto" rows="2" placeholder="O que quero alcançar nos próximos 6 meses...">${p.curto||''}</textarea></div>
+          <div class="dev-form-group"><label class="dev-label">Meta de Médio Prazo (1 ano)</label><textarea class="dev-input" id="devPdiMedio" rows="2" placeholder="Objetivo para os próximos 12 meses...">${p.medio||''}</textarea></div>
+          <div class="dev-form-group"><label class="dev-label">Meta de Longo Prazo (3 anos)</label><textarea class="dev-input" id="devPdiLongo" rows="2" placeholder="Onde quero estar em 3 anos...">${p.longo||''}</textarea></div>
+          <div class="dev-form-group"><label class="dev-label">Observações</label><textarea class="dev-input" id="devPdiObs" rows="2" placeholder="Pontos de atenção, forças, suporte necessário...">${p.obs||''}</textarea></div>
+        </div>
+        <div class="dev-modal-footer">
+          <button class="dev-btn-cancel" onclick="MeuDev._fecharPdiModal()">Cancelar</button>
+          <button class="btn-primary" onclick="MeuDev._salvarPdi()"><i class="fa-solid fa-floppy-disk"></i> Salvar PDI</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+  _fecharPdiModal() { document.getElementById('devPdiModal')?.remove(); },
+  _salvarPdi() {
+    this._pdi = {
+      curto: $('devPdiCurto').value.trim(),
+      medio: $('devPdiMedio').value.trim(),
+      longo: $('devPdiLongo').value.trim(),
+      obs:   $('devPdiObs').value.trim(),
+      atualizadoEm: new Date().toISOString(),
+    };
+    this._setData('pdi', this._pdi);
+    this._fecharPdiModal();
+    this._renderPdi();
+    showToast('PDI salvo!', 'success');
+  },
+
+  // ── CONQUISTAS ──
+  _renderConquistas() {
+    const badges = [
+      { icon:'🎓', nome:'Primeiro Diploma', desc:'Conclua sua primeira formação acadêmica',    check: () => this._formacoes.some(f => ['graduacao','pos','mba','mestrado','doutorado'].includes(f.tipo) && f.status==='concluido') },
+      { icon:'⚡', nome:'5 Cursos',         desc:'Registre 5 cursos concluídos',               check: () => this._formacoes.filter(f=>f.status==='concluido').length >= 5 },
+      { icon:'🔥', nome:'100 Horas',        desc:'Acumule 100h de capacitação',                check: () => this._formacoes.reduce((s,f)=>s+(parseInt(f.horas)||0),0) >= 100 },
+      { icon:'🌐', nome:'Multilíngue',      desc:'Registre 2 ou mais idiomas',                 check: () => this._formacoes.filter(f=>f.tipo==='idioma').length >= 2 },
+      { icon:'🏅', nome:'Certificado',      desc:'Obtenha uma certificação válida',             check: () => this._formacoes.some(f=>f.tipo==='certificacao'&&f.status==='concluido') },
+      { icon:'📖', nome:'Leitor Ativo',     desc:'Registre 3 livros lidos',                    check: () => this._formacoes.filter(f=>f.tipo==='livro'&&f.status==='concluido').length >= 3 },
+      { icon:'🎯', nome:'PDI Completo',     desc:'Preencha todas as metas do PDI',             check: () => !!(this._pdi?.curto && this._pdi?.medio && this._pdi?.longo) },
+      { icon:'🤝', nome:'Mentor',           desc:'Registre uma mentoria como mentor',           check: () => this._formacoes.some(f=>f.tipo==='mentoria') },
+    ];
+    const el = $('devConquistasList');
+    el.innerHTML = badges.map(b => {
+      const unlocked = b.check();
+      return `<div class="dev-badge ${unlocked?'unlocked':'locked'}">
+        <div class="dev-badge-icon">${b.icon}</div>
+        <div class="dev-badge-name">${b.nome}</div>
+        <div class="dev-badge-desc">${unlocked ? '<strong style="color:#107040">Desbloqueado!</strong>' : b.desc}</div>
+      </div>`;
+    }).join('');
   },
 };
 
