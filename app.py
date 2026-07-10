@@ -294,6 +294,102 @@ def api_history_update():
         return jsonify({"error": str(e)}), 500
 
 
+# ── EXPORTAÇÃO GESTOR ────────────────────────────────────────────────────────
+
+@app.route("/api/gestor/checklist/exportar")
+def api_gestor_exportar():
+    from io import BytesIO
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    data_inicio = request.args.get("data_inicio", "")
+    data_fim    = request.args.get("data_fim", "")
+    usuario     = request.args.get("usuario", "").strip().lower()
+
+    all_records = get_all_data()
+
+    # filtro de período
+    filtered = []
+    for r in all_records:
+        d = r.get("data", "")
+        if data_inicio and d < data_inicio:
+            continue
+        if data_fim and d > data_fim:
+            continue
+        if usuario and r.get("responsavel", "").strip().lower() != usuario:
+            continue
+        filtered.append(r)
+
+    filtered.sort(key=lambda r: (r.get("data", ""), r.get("responsavel", ""), r.get("horario_inicio", "")))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Checklist"
+
+    # estilos
+    navy_fill  = PatternFill("solid", fgColor="002468")
+    sky_fill   = PatternFill("solid", fgColor="E8F7FD")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    normal_font = Font(size=10)
+    center     = Alignment(horizontal="center", vertical="center")
+    thin_side  = Side(style="thin", color="D0D7E0")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    headers = ["Data", "Responsável", "Atividade", "Horário Início", "Horário Fim",
+               "Tempo Previsto (min)", "Status", "Houve Atraso?", "Observações"]
+    col_widths = [14, 20, 45, 16, 14, 22, 16, 14, 35]
+
+    # cabeçalho
+    for col_idx, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font      = header_font
+        cell.fill      = navy_fill
+        cell.alignment = center
+        cell.border    = thin_border
+        ws.column_dimensions[get_column_letter(col_idx)].width = w
+    ws.row_dimensions[1].height = 22
+
+    # dados
+    status_map = {"concluido": "Concluído", "parcial": "Parcial",
+                  "nao_realizado": "Não realizado", "": "—"}
+    for row_idx, r in enumerate(filtered, 2):
+        vals = [
+            r.get("data", ""),
+            r.get("responsavel", ""),
+            r.get("titulo", r.get("atividade", "")),
+            r.get("horario_inicio", ""),
+            r.get("horario_fim", ""),
+            r.get("tempo_previsto", ""),
+            status_map.get(r.get("status", ""), r.get("status", "")),
+            "Sim" if r.get("houve_atraso") in (True, "sim", "Sim", "true", "1") else "Não",
+            r.get("observacoes", ""),
+        ]
+        fill = sky_fill if row_idx % 2 == 0 else None
+        for col_idx, v in enumerate(vals, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=str(v) if v is not None else "")
+            cell.font      = normal_font
+            cell.border    = thin_border
+            cell.alignment = Alignment(vertical="center", wrap_text=(col_idx == 3 or col_idx == 9))
+            if fill:
+                cell.fill = fill
+        ws.row_dimensions[row_idx].height = 16
+
+    # totais
+    row_total = len(filtered) + 2
+    ws.cell(row=row_total, column=1, value="TOTAL DE REGISTROS").font = Font(bold=True, size=10)
+    ws.cell(row=row_total, column=2, value=len(filtered)).font = Font(bold=True, size=10, color="002468")
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    periodo = f"{data_inicio}_a_{data_fim}" if data_inicio and data_fim else "completo"
+    nome = f"checklist_{periodo}.xlsx"
+    return send_file(buf, as_attachment=True, download_name=nome,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
 # ── GUIAS (COMO FAZER) ───────────────────────────────────────────────────────
 
 from guias_handler import (

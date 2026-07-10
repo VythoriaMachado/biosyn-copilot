@@ -2059,15 +2059,12 @@ const AdminMode = {
   enter() {
     this.active = true;
     this.filtroUsuario = '';
-    // Banner de modo gestor
     $('gestorBanner').style.display = 'flex';
-    // Atualizar nav item
     const navGestor = document.querySelector('.nav-item[data-view="gestor"]');
     if (navGestor) navGestor.classList.add('gestor-active');
     showToast('Modo Gestor ativado — visualizando dados de toda a equipe.', 'success');
-    // Carregar usuários disponíveis para filtro
     this._loadUsers();
-    // Recarregar view atual com dados de todos
+    GestorChecklist.mostrar();
     App.switchView(App.currentView);
   },
 
@@ -2077,6 +2074,7 @@ const AdminMode = {
     $('gestorBanner').style.display = 'none';
     const navGestor = document.querySelector('.nav-item[data-view="gestor"]');
     if (navGestor) navGestor.classList.remove('gestor-active');
+    GestorChecklist.ocultar();
     showToast('Modo Gestor desativado.', '');
     App.switchView(App.currentView);
   },
@@ -2086,8 +2084,13 @@ const AdminMode = {
       const data = await fetch('/api/history').then(r => r.json());
       const records = data.records || [];
       const users = [...new Set(records.map(r => r.responsavel).filter(Boolean))].sort();
+      // banner filter
       const sel = $('gestorUserFilter');
       sel.innerHTML = '<option value="">Toda a equipe</option>' +
+        users.map(u => `<option value="${u}">${u}</option>`).join('');
+      // gestor checklist filter
+      const sel2 = $('gestorClaboradorSel');
+      if (sel2) sel2.innerHTML = '<option value="">Toda a equipe</option>' +
         users.map(u => `<option value="${u}">${u}</option>`).join('');
     } catch {}
   },
@@ -2095,6 +2098,49 @@ const AdminMode = {
   applyFilter() {
     this.filtroUsuario = $('gestorUserFilter').value;
     App.switchView(App.currentView);
+  },
+};
+
+// ── GESTOR CHECKLIST ──────────────────────────────────────────────────────────
+const GestorChecklist = {
+  mostrar() {
+    const bar = $('gestorChecklistBar');
+    if (!bar) return;
+    bar.style.display = 'block';
+    // preencher datas padrão: mês atual
+    const hoje = new Date();
+    const y = hoje.getFullYear();
+    const m = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ini = $('gestorDataInicio');
+    const fim = $('gestorDataFim');
+    if (ini && !ini.value) ini.value = `${y}-${m}-01`;
+    if (fim && !fim.value) fim.value = `${y}-${m}-${String(new Date(y, hoje.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
+  },
+
+  ocultar() {
+    const bar = $('gestorChecklistBar');
+    if (bar) bar.style.display = 'none';
+  },
+
+  exportar() {
+    const ini  = ($('gestorDataInicio')?.value  || '').trim();
+    const fim  = ($('gestorDataFim')?.value     || '').trim();
+    const user = ($('gestorClaboradorSel')?.value || '').trim();
+
+    if (!ini || !fim) {
+      showToast('Selecione o período de início e fim antes de exportar.', 'error');
+      return;
+    }
+    if (ini > fim) {
+      showToast('A data de início não pode ser posterior à data fim.', 'error');
+      return;
+    }
+
+    const params = new URLSearchParams({ data_inicio: ini, data_fim: fim });
+    if (user) params.set('usuario', user);
+
+    showToast('Gerando planilha...', '');
+    window.location.href = `/api/gestor/checklist/exportar?${params}`;
   },
 };
 

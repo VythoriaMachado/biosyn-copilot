@@ -263,6 +263,24 @@
       </div>
     </div>
 
+    <!-- FILTRO GESTOR — visível apenas no Modo Gestor -->
+    <div id="gestorChecklistBar" style="display:none">
+      <div class="gestor-cl-bar">
+        <i class="fa-solid fa-filter" style="color:var(--sky);font-size:13px"></i>
+        <span class="gestor-cl-label">Período:</span>
+        <input type="date" class="gestor-cl-date" id="gestorDataInicio" title="Data início">
+        <span style="font-size:12px;color:var(--gray-400)">até</span>
+        <input type="date" class="gestor-cl-date" id="gestorDataFim" title="Data fim">
+        <span class="gestor-cl-label">Colaborador:</span>
+        <select class="gestor-cl-select" id="gestorClaboradorSel">
+          <option value="">Toda a equipe</option>
+        </select>
+        <button class="gestor-cl-btn" onclick="GestorChecklist.exportar()">
+          <i class="fa-solid fa-file-excel"></i> Exportar Excel
+        </button>
+      </div>
+    </div>
+
     <!-- PAINEL DE HISTÓRICO (oculto por padrão) -->
     <div id="historyPanel" style="display:none"></div>
 
