@@ -52,6 +52,9 @@
     <a href="#" class="nav-item active" data-view="workhub" onclick="WorkHub.open(); return false;">
       <i class="fa-solid fa-grid-2"></i><span>WorkHub</span>
     </a>
+    <a href="#" class="nav-item" data-view="documentos" onclick="App.switchView('documentos'); return false;">
+      <i class="fa-solid fa-folder-open"></i><span>Documentos</span>
+    </a>
     <a href="#" class="nav-item" data-view="desenvolvimento" onclick="App.switchView('desenvolvimento'); return false;">
       <i class="fa-solid fa-rocket"></i><span>Meu Desenvolvimento</span>
     </a>
@@ -499,6 +502,82 @@
       <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando guias...</div>
     </div>
   </section>
+
+  <!-- ── DOCUMENTOS ── -->
+  <section class="view" id="view-documentos">
+    <div class="page-hero">
+      <div>
+        <h2><i class="fa-solid fa-folder-open" style="color:var(--sky);margin-right:8px"></i>Documentos</h2>
+        <p style="opacity:.7;font-size:14px">Repositório de arquivos da equipe — PDFs, planilhas e imagens</p>
+      </div>
+      <label class="btn-primary doc-upload-label" title="Enviar novo documento">
+        <i class="fa-solid fa-cloud-arrow-up"></i> Enviar Documento
+        <input type="file" id="docUploadInput" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.xls,.xlsx,.xlsm,.csv,.doc,.docx" style="display:none" onchange="Documentos.iniciarUpload(this)">
+      </label>
+    </div>
+
+    <!-- toolbar -->
+    <div class="doc-toolbar">
+      <div class="doc-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="docSearch" placeholder="Buscar documentos..." oninput="Documentos.buscar()">
+      </div>
+      <select class="doc-select" id="docFiltroTipo" onchange="Documentos.buscar()">
+        <option value="">Todos os tipos</option>
+        <option value="pdf">PDF</option>
+        <option value="excel">Excel / Planilha</option>
+        <option value="imagem">Imagem</option>
+        <option value="word">Word</option>
+        <option value="outro">Outro</option>
+      </select>
+      <select class="doc-select" id="docFiltroCategoria" onchange="Documentos.buscar()">
+        <option value="">Todas as categorias</option>
+      </select>
+    </div>
+
+    <!-- grid de documentos -->
+    <div id="docGrid" class="doc-grid">
+      <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando documentos...</div>
+    </div>
+  </section>
+
+  <!-- MODAL UPLOAD DOCUMENTO -->
+  <div id="docUploadModal" class="dev-modal-overlay" style="display:none" onclick="if(event.target===this)Documentos.cancelarUpload()">
+    <div class="dev-modal" style="max-width:460px">
+      <div class="dev-modal-header">
+        <h3><i class="fa-solid fa-cloud-arrow-up" style="color:var(--sky);margin-right:6px"></i> Enviar Documento</h3>
+        <button class="dev-modal-close" onclick="Documentos.cancelarUpload()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dev-modal-body">
+        <div id="docPreviewArquivo" class="doc-preview-arquivo"></div>
+        <div class="dev-form-group">
+          <label class="dev-label">Nome do Documento *</label>
+          <input class="dev-input" type="text" id="docNome" placeholder="Ex: Contrato de Fornecimento 2026">
+        </div>
+        <div class="dev-form-row">
+          <div class="dev-form-group">
+            <label class="dev-label">Categoria</label>
+            <input class="dev-input" type="text" id="docCategoria" placeholder="Ex: Contratos, RH, Financeiro..." list="docCategoriasList">
+            <datalist id="docCategoriasList"></datalist>
+          </div>
+          <div class="dev-form-group">
+            <label class="dev-label">Tipo detectado</label>
+            <input class="dev-input" type="text" id="docTipoDetectado" readonly style="opacity:.6;cursor:default">
+          </div>
+        </div>
+        <div class="dev-form-group">
+          <label class="dev-label">Descrição</label>
+          <textarea class="dev-input" id="docDescricao" rows="2" placeholder="Breve descrição do conteúdo..."></textarea>
+        </div>
+      </div>
+      <div class="dev-modal-footer">
+        <button class="dev-btn-cancel" onclick="Documentos.cancelarUpload()">Cancelar</button>
+        <button class="btn-primary" id="docBtnEnviar" onclick="Documentos.confirmarUpload()">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Enviar
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── MEU DESENVOLVIMENTO ── -->
   <section class="view" id="view-desenvolvimento">

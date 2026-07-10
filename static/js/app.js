@@ -74,14 +74,13 @@ const App = {
     const tabEl = document.querySelector(`.wh-tab[data-view="${name}"]`);
     if (tabEl) tabEl.classList.add('active');
 
-    // show/hide workhub tab bar
+    // show/hide workhub tab bar + highlight correct nav item
     const tabBar = $('workhubTabs');
-    if (tabBar) tabBar.style.display = name === 'desenvolvimento' ? 'none' : 'flex';
-
-    // highlight correct nav item
+    const sidebarViews = ['desenvolvimento', 'documentos'];
+    const isDevView = sidebarViews.includes(name);
+    if (tabBar) tabBar.style.display = isDevView ? 'none' : 'flex';
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const isDevView = name === 'desenvolvimento';
-    const activeNav = document.querySelector(`.nav-item[data-view="${isDevView ? 'desenvolvimento' : 'workhub'}"]`);
+    const activeNav = document.querySelector(`.nav-item[data-view="${isDevView ? name : 'workhub'}"]`);
     if (activeNav) activeNav.classList.add('active');
 
     const exportBtn = $('btnExportWeekly');
@@ -96,6 +95,7 @@ const App = {
     if (name === 'managerial')      Managerial.load();
     if (name === 'insights')        InsightsView.load(30);
     if (name === 'biblioteca')      GuiaBiblioteca.load();
+    if (name === 'documentos')      Documentos.load();
     if (name === 'desenvolvimento') MeuDev.load();
   },
 
@@ -2141,6 +2141,178 @@ const GestorChecklist = {
 
     showToast('Gerando planilha...', '');
     window.location.href = `/api/gestor/checklist/exportar?${params}`;
+  },
+};
+
+// ── DOCUMENTOS ────────────────────────────────────────────────────────────
+const Documentos = {
+  _arquivoPendente: null,
+
+  _icone(tipo) {
+    return { pdf:'📄', excel:'📊', imagem:'🖼️', word:'📝', outro:'📁' }[tipo] || '📁';
+  },
+  _chipClass(tipo) {
+    return `doc-chip-${tipo || 'outro'}`;
+  },
+  _tipoLabel(tipo) {
+    return { pdf:'PDF', excel:'Excel', imagem:'Imagem', word:'Word', outro:'Outro' }[tipo] || 'Outro';
+  },
+
+  async load() {
+    await this.buscar();
+    await this._carregarCategorias();
+  },
+
+  async _carregarCategorias() {
+    try {
+      const d = await fetch('/api/documentos/categorias').then(r => r.json());
+      const sel = $('docFiltroCategoria');
+      const cats = d.categorias || [];
+      sel.innerHTML = '<option value="">Todas as categorias</option>' +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      // preenche datalist do modal
+      const dl = document.getElementById('docCategoriasList');
+      if (dl) dl.innerHTML = cats.map(c => `<option value="${c}">`).join('');
+    } catch {}
+  },
+
+  async buscar() {
+    const search    = ($('docSearch')?.value || '').trim();
+    const tipo      = $('docFiltroTipo')?.value || '';
+    const categoria = $('docFiltroCategoria')?.value || '';
+    const params    = new URLSearchParams();
+    if (search)    params.set('search', search);
+    if (tipo)      params.set('tipo', tipo);
+    if (categoria) params.set('categoria', categoria);
+    try {
+      const d = await fetch(`/api/documentos?${params}`).then(r => r.json());
+      this._render(d.documentos || []);
+    } catch {
+      $('docGrid').innerHTML = '<div class="doc-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Erro ao carregar documentos.</p></div>';
+    }
+  },
+
+  _render(docs) {
+    const el = $('docGrid');
+    if (!docs.length) {
+      el.innerHTML = `<div class="doc-empty" style="grid-column:1/-1">
+        <i class="fa-solid fa-folder-open"></i>
+        <p>Nenhum documento encontrado.<br>Clique em <strong>Enviar Documento</strong> para começar.</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML = docs.map(d => {
+      const data = d.criado_em ? d.criado_em.slice(0,10).split('-').reverse().join('/') : '';
+      const desc = d.descricao ? `<div class="doc-card-desc">${d.descricao}</div>` : '';
+      return `<div class="doc-card">
+        <div class="doc-card-icon">${this._icone(d.tipo)}</div>
+        <div>
+          <div class="doc-card-name">${d.nome}</div>
+          <div style="margin-top:5px"><span class="doc-chip-tipo ${this._chipClass(d.tipo)}">${this._tipoLabel(d.tipo)}</span>${d.categoria ? ` <span style="font-size:11px;color:var(--gray-400)">${d.categoria}</span>` : ''}</div>
+        </div>
+        ${desc}
+        <div class="doc-card-meta">
+          ${d.criado_por ? `<span><i class="fa-solid fa-user" style="width:12px"></i> ${d.criado_por}</span>` : ''}
+          ${data ? `<span><i class="fa-solid fa-calendar" style="width:12px"></i> ${data}</span>` : ''}
+        </div>
+        <div class="doc-card-footer">
+          <a class="doc-btn-download" href="${d.url}" target="_blank" download>
+            <i class="fa-solid fa-download"></i> Baixar
+          </a>
+          <button class="doc-btn-del" onclick="Documentos.excluir(${d.id},'${(d.nome||'').replace(/'/g,"\\'")}')"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  iniciarUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const ALLOWED = /\.(pdf|png|jpg|jpeg|webp|gif|xls|xlsx|xlsm|csv|doc|docx)$/i;
+    if (!ALLOWED.test(file.name)) {
+      showToast('Tipo de arquivo não permitido.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('Arquivo muito grande. Máximo 20MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this._arquivoPendente = file;
+
+    // detectar tipo
+    const ext = file.name.rsplit ? file.name.rsplit('.',1) : file.name.split('.').pop().toLowerCase();
+    const extLow = file.name.split('.').pop().toLowerCase();
+    const tipoMap = { pdf:'PDF', xls:'Excel', xlsx:'Excel', xlsm:'Excel', csv:'Excel',
+                      png:'Imagem', jpg:'Imagem', jpeg:'Imagem', webp:'Imagem', gif:'Imagem',
+                      doc:'Word', docx:'Word' };
+    $('docTipoDetectado').value = tipoMap[extLow] || 'Outro';
+    $('docNome').value = file.name.replace(/\.[^.]+$/, '');
+    $('docDescricao').value = '';
+
+    // preview
+    const iconeMap = { pdf:'📄', xls:'📊', xlsx:'📊', xlsm:'📊', csv:'📊',
+                       png:'🖼️', jpg:'🖼️', jpeg:'🖼️', webp:'🖼️', gif:'🖼️',
+                       doc:'📝', docx:'📝' };
+    $('docPreviewArquivo').innerHTML = `<span style="font-size:22px">${iconeMap[extLow]||'📁'}</span><span>${file.name}</span>`;
+
+    $('docUploadModal').style.display = 'flex';
+    setTimeout(() => $('docNome').focus(), 100);
+  },
+
+  cancelarUpload() {
+    this._arquivoPendente = null;
+    $('docUploadInput').value = '';
+    $('docUploadModal').style.display = 'none';
+  },
+
+  async confirmarUpload() {
+    const nome = $('docNome').value.trim();
+    if (!nome) { showToast('Informe o nome do documento.', 'error'); return; }
+    if (!this._arquivoPendente) { showToast('Nenhum arquivo selecionado.', 'error'); return; }
+
+    const btn = $('docBtnEnviar');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+    const form = new FormData();
+    form.append('file',       this._arquivoPendente);
+    form.append('nome',       nome);
+    form.append('categoria',  $('docCategoria').value.trim());
+    form.append('descricao',  $('docDescricao').value.trim());
+    form.append('criado_por', UserProfile.get().name || '');
+
+    try {
+      const d = await fetch('/api/documentos/upload', { method:'POST', body:form }).then(r => r.json());
+      if (d.success) {
+        showToast('Documento enviado com sucesso!', 'success');
+        this.cancelarUpload();
+        await this.load();
+      } else {
+        showToast(d.error || 'Erro ao enviar.', 'error');
+      }
+    } catch {
+      showToast('Erro ao enviar o documento.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Enviar';
+    }
+  },
+
+  async excluir(id, nome) {
+    if (!confirm(`Excluir "${nome}"?\nEsta ação não pode ser desfeita.`)) return;
+    try {
+      const d = await fetch(`/api/documentos/${id}`, { method:'DELETE' }).then(r => r.json());
+      if (d.success) {
+        showToast('Documento excluído.', 'success');
+        await this.load();
+      } else {
+        showToast(d.error || 'Erro ao excluir.', 'error');
+      }
+    } catch {
+      showToast('Erro ao excluir o documento.', 'error');
+    }
   },
 };
 

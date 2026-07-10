@@ -390,6 +390,69 @@ def api_gestor_exportar():
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
+# ── DOCUMENTOS ───────────────────────────────────────────────────────────────
+
+from documentos_handler import (
+    list_documentos, get_documento, create_documento,
+    delete_documento, get_categorias_doc, upload_documento, _tipo_arquivo,
+)
+
+@app.route("/api/documentos")
+def api_list_documentos():
+    search    = request.args.get("search", "")
+    categoria = request.args.get("categoria", "")
+    tipo      = request.args.get("tipo", "")
+    docs = list_documentos(search=search, categoria=categoria, tipo=tipo)
+    return jsonify({"documentos": docs, "total": len(docs)})
+
+@app.route("/api/documentos/categorias")
+def api_doc_categorias():
+    return jsonify({"categorias": get_categorias_doc()})
+
+@app.route("/api/documentos/upload", methods=["POST"])
+def api_doc_upload():
+    file      = request.files.get("file")
+    nome      = request.form.get("nome", "").strip()
+    categoria = request.form.get("categoria", "Geral").strip()
+    descricao = request.form.get("descricao", "").strip()
+    criado_por = request.form.get("criado_por", "").strip()
+
+    if not file or not file.filename:
+        return jsonify({"error": "Nenhum arquivo enviado"}), 400
+
+    nome_arquivo = nome or file.filename
+    tipo = _tipo_arquivo(file.filename)
+
+    # verifica extensão permitida
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    ALLOWED = {'pdf','png','jpg','jpeg','webp','gif','xls','xlsx','xlsm','csv','doc','docx'}
+    if ext not in ALLOWED:
+        return jsonify({"error": f"Extensão .{ext} não permitida"}), 400
+
+    try:
+        url = upload_documento(file)
+        doc = create_documento({
+            "nome":       nome_arquivo,
+            "tipo":       tipo,
+            "url":        url,
+            "categoria":  categoria,
+            "descricao":  descricao,
+            "criado_por": criado_por,
+            "extensao":   ext,
+        })
+        return jsonify({"success": True, "documento": doc})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/documentos/<int:doc_id>", methods=["DELETE"])
+def api_delete_documento(doc_id):
+    try:
+        delete_documento(doc_id)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── GUIAS (COMO FAZER) ───────────────────────────────────────────────────────
 
 from guias_handler import (
