@@ -1113,6 +1113,29 @@ textarea.dev-input { resize: vertical; min-height: 60px; }
 .dev-pdi-meta { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: #F8FAFC; border-radius: 8px; border: 1px solid var(--gray-100); }
 .dev-pdi-meta-prazo { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--gray-400); min-width: 80px; padding-top: 2px; }
 .dev-pdi-meta-texto { flex: 1; font-size: 13px; color: var(--gray-700); line-height: 1.5; }
+/* evidência upload */
+.dev-evidencia-wrap { display: flex; gap: 8px; align-items: stretch; }
+.dev-evidencia-wrap .dev-input { flex: 1; }
+.dev-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--gray-200); background: var(--white);
+  font-size: 12px; font-weight: 600; color: var(--gray-500);
+  white-space: nowrap; transition: border-color .15s, color .15s, background .15s;
+  flex-shrink: 0;
+}
+.dev-upload-btn:hover { border-color: var(--sky); color: var(--sky); background: #E8F4FD; }
+.dev-evidencia-preview {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; background: #F0F9FF;
+  border: 1px solid #BAE6FD; border-radius: 8px;
+  font-size: 12px; color: #0369A1;
+}
+.dev-evidencia-preview a { color: #0369A1; text-decoration: none; font-weight: 600; }
+.dev-evidencia-preview a:hover { text-decoration: underline; }
+.dev-evidencia-preview .dev-prev-remove { margin-left: auto; background: none; border: none; cursor: pointer; color: #94A3B8; font-size: 13px; padding: 0 2px; }
+.dev-evidencia-preview .dev-prev-remove:hover { color: #C9302C; }
+
 @media (max-width: 640px) {
   .dev-kpi-row { grid-template-columns: repeat(2,1fr); }
   .dev-form-row { grid-template-columns: 1fr; }

@@ -716,8 +716,15 @@
           <input class="dev-input" type="month" id="devFVencimento">
         </div>
         <div class="dev-form-group">
-          <label class="dev-label">Link do Certificado / Evidência</label>
-          <input class="dev-input" type="url" id="devFUrl" placeholder="https://...">
+          <label class="dev-label">Certificado / Evidência</label>
+          <div class="dev-evidencia-wrap">
+            <input class="dev-input" type="url" id="devFUrl" placeholder="Cole um link (https://...) ou envie um arquivo →">
+            <label class="dev-upload-btn" title="Enviar PDF ou imagem">
+              <i class="fa-solid fa-paperclip"></i> Arquivo
+              <input type="file" id="devFArquivo" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none" onchange="MeuDev._uploadEvidencia(this)">
+            </label>
+          </div>
+          <div id="devFEvidenciaPreview" style="display:none;margin-top:6px"></div>
         </div>
         <div class="dev-form-group">
           <label class="dev-label">Observações</label>

@@ -2341,9 +2341,65 @@ const MeuDev = {
     $('devFUrl').value     = f.url     || '';
     $('devFObs').value     = f.obs     || '';
     this.ajustarCampos();
+    this._limparEvidencia();
+    if (f.url) {
+      const isPdf = f.url.toLowerCase().includes('.pdf');
+      const nome  = f.url.split('/').pop() || 'Ver arquivo';
+      this._mostrarPreviewEvidencia(f.url, nome, isPdf);
+    }
     $('devFormModal').style.display = 'flex';
   },
-  fecharModal() { $('devFormModal').style.display = 'none'; },
+  _uploadEvidencia(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const isPdf = file.type === 'application/pdf';
+    const isImg = file.type.startsWith('image/');
+    if (!isPdf && !isImg) { showToast('Envie um PDF ou imagem (PNG, JPG, WEBP).', 'error'); input.value = ''; return; }
+    const maxMb = 5;
+    if (file.size > maxMb * 1024 * 1024) { showToast(`Arquivo muito grande. Máximo ${maxMb}MB.`, 'error'); input.value = ''; return; }
+
+    const btn = input.closest('label');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+    const form = new FormData();
+    form.append('file', file);
+    fetch('/api/guias/upload', { method: 'POST', body: form })
+      .then(r => r.json())
+      .then(d => {
+        if (d.url) {
+          $('devFUrl').value = d.url;
+          this._mostrarPreviewEvidencia(d.url, file.name, isPdf);
+          showToast('Arquivo enviado!', 'success');
+        } else {
+          showToast('Erro ao enviar arquivo.', 'error');
+        }
+      })
+      .catch(() => showToast('Erro ao enviar arquivo.', 'error'))
+      .finally(() => {
+        btn.innerHTML = '<i class="fa-solid fa-paperclip"></i> Arquivo<input type="file" id="devFArquivo" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none" onchange="MeuDev._uploadEvidencia(this)">';
+      });
+  },
+
+  _mostrarPreviewEvidencia(url, nome, isPdf) {
+    const prev = $('devFEvidenciaPreview');
+    const icon = isPdf ? '📄' : '🖼';
+    prev.style.display = 'block';
+    prev.innerHTML = `<div class="dev-evidencia-preview">
+      ${icon} <a href="${url}" target="_blank">${nome || 'Ver arquivo'}</a>
+      <button class="dev-prev-remove" onclick="MeuDev._limparEvidencia()" title="Remover"><i class="fa-solid fa-xmark"></i></button>
+    </div>`;
+  },
+
+  _limparEvidencia() {
+    $('devFUrl').value = '';
+    $('devFEvidenciaPreview').style.display = 'none';
+    $('devFEvidenciaPreview').innerHTML = '';
+  },
+
+  fecharModal() {
+    $('devFormModal').style.display = 'none';
+    this._limparEvidencia();
+  },
   salvarFormacao() {
     const titulo = $('devFTitulo').value.trim();
     if (!titulo) { showToast('Informe o nome da formação.', 'error'); return; }
