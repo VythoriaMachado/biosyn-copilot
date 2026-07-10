@@ -303,44 +303,59 @@ def api_gestor_exportar():
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    data_inicio = request.args.get("data_inicio", "")
+    data_inicio = request.args.get("data_inicio", "")  # YYYY-MM-DD (vem do input date)
     data_fim    = request.args.get("data_fim", "")
     usuario     = request.args.get("usuario", "").strip().lower()
 
+    def to_iso(data_str):
+        """Converte DD/MM/YYYY ou YYYY-MM-DD para YYYY-MM-DD para comparação."""
+        s = str(data_str).strip()
+        if len(s) == 10 and s[2] == '/' and s[5] == '/':
+            # DD/MM/YYYY → YYYY-MM-DD
+            return f"{s[6:]}-{s[3:5]}-{s[:2]}"
+        return s[:10]  # já está em YYYY-MM-DD ou ISO timestamp
+
     all_records = get_all_data()
 
-    # filtro de período
     filtered = []
     for r in all_records:
-        d = r.get("data", "")
-        if data_inicio and d < data_inicio:
+        d_iso = to_iso(r.get("data", ""))
+        if data_inicio and d_iso < data_inicio:
             continue
-        if data_fim and d > data_fim:
+        if data_fim and d_iso > data_fim:
             continue
         if usuario and r.get("responsavel", "").strip().lower() != usuario:
             continue
         filtered.append(r)
 
-    filtered.sort(key=lambda r: (r.get("data", ""), r.get("responsavel", ""), r.get("horario_inicio", "")))
+    filtered.sort(key=lambda r: (
+        to_iso(r.get("data", "")),
+        r.get("responsavel", ""),
+        r.get("horario_inicio", "")
+    ))
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Checklist"
 
-    # estilos
-    navy_fill  = PatternFill("solid", fgColor="002468")
-    sky_fill   = PatternFill("solid", fgColor="E8F7FD")
-    header_font = Font(bold=True, color="FFFFFF", size=11)
+    navy_fill   = PatternFill("solid", fgColor="002468")
+    sky_fill    = PatternFill("solid", fgColor="EFF6FF")
+    header_font = Font(bold=True, color="FFFFFF", size=10)
     normal_font = Font(size=10)
-    center     = Alignment(horizontal="center", vertical="center")
-    thin_side  = Side(style="thin", color="D0D7E0")
+    bold_font   = Font(bold=True, size=10)
+    thin_side   = Side(style="thin", color="D0D7E0")
     thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    center      = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    headers = ["Data", "Responsável", "Atividade", "Horário Início", "Horário Fim",
-               "Tempo Previsto (min)", "Status", "Houve Atraso?", "Observações"]
-    col_widths = [14, 20, 45, 16, 14, 22, 16, 14, 35]
+    headers = [
+        "Data", "Dia da Semana", "Responsável", "Atividade",
+        "Horário Início", "Horário Fim", "Tempo Previsto (min)",
+        "Status", "Tempo Executado", "Houve Atraso?", "Motivo Atraso",
+        "Reagendado?", "Prioridade", "Observações",
+        "Atividade Extra?", "Solicitante Extra", "Origem"
+    ]
+    col_widths = [13, 16, 20, 42, 15, 12, 22, 15, 20, 14, 28, 14, 12, 35, 15, 22, 14]
 
-    # cabeçalho
     for col_idx, (h, w) in enumerate(zip(headers, col_widths), 1):
         cell = ws.cell(row=1, column=col_idx, value=h)
         cell.font      = header_font
@@ -348,44 +363,88 @@ def api_gestor_exportar():
         cell.alignment = center
         cell.border    = thin_border
         ws.column_dimensions[get_column_letter(col_idx)].width = w
-    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[1].height = 30
 
-    # dados
-    status_map = {"concluido": "Concluído", "parcial": "Parcial",
-                  "nao_realizado": "Não realizado", "": "—"}
+    status_label = {
+        "concluido": "Concluído", "Concluído": "Concluído",
+        "parcial": "Parcial", "Parcial": "Parcial",
+        "nao_realizado": "Não realizado", "Não realizado": "Não realizado",
+        "": "—"
+    }
+
+    # cores por status
+    fill_concluido    = PatternFill("solid", fgColor="D4F5E5")
+    fill_parcial      = PatternFill("solid", fgColor="FEF3D6")
+    fill_nao_realizado= PatternFill("solid", fgColor="FFE8E8")
+    fill_alt          = sky_fill
+
     for row_idx, r in enumerate(filtered, 2):
+        status_raw = r.get("status", "")
+        status_txt = status_label.get(status_raw, status_raw or "—")
+        atraso = r.get("houve_atraso", "")
+        atraso_txt = "Sim" if str(atraso).lower() in ("sim", "true", "1") else "Não"
+
         vals = [
             r.get("data", ""),
+            r.get("dia_semana", ""),
             r.get("responsavel", ""),
             r.get("titulo", r.get("atividade", "")),
             r.get("horario_inicio", ""),
             r.get("horario_fim", ""),
             r.get("tempo_previsto", ""),
-            status_map.get(r.get("status", ""), r.get("status", "")),
-            "Sim" if r.get("houve_atraso") in (True, "sim", "Sim", "true", "1") else "Não",
+            status_txt,
+            r.get("tempo_executado", ""),
+            atraso_txt,
+            r.get("motivo_atraso", ""),
+            r.get("reagendado", ""),
+            r.get("prioridade", ""),
             r.get("observacoes", ""),
+            r.get("atividade_extra", ""),
+            r.get("solicitante_extra", ""),
+            r.get("origem", ""),
         ]
-        fill = sky_fill if row_idx % 2 == 0 else None
+
+        # cor da linha por status
+        if status_raw in ("concluido", "Concluído"):
+            row_fill = fill_concluido
+        elif status_raw in ("parcial", "Parcial"):
+            row_fill = fill_parcial
+        elif status_raw in ("nao_realizado", "Não realizado"):
+            row_fill = fill_nao_realizado
+        elif row_idx % 2 == 0:
+            row_fill = fill_alt
+        else:
+            row_fill = None
+
+        long_cols = {4, 11, 14}  # Atividade, Motivo Atraso, Observações
         for col_idx, v in enumerate(vals, 1):
             cell = ws.cell(row=row_idx, column=col_idx, value=str(v) if v is not None else "")
-            cell.font      = normal_font
-            cell.border    = thin_border
-            cell.alignment = Alignment(vertical="center", wrap_text=(col_idx == 3 or col_idx == 9))
-            if fill:
-                cell.fill = fill
-        ws.row_dimensions[row_idx].height = 16
+            cell.font   = normal_font
+            cell.border = thin_border
+            cell.alignment = Alignment(
+                vertical="center",
+                horizontal="left" if col_idx in long_cols else "center",
+                wrap_text=(col_idx in long_cols)
+            )
+            if row_fill:
+                cell.fill = row_fill
+        ws.row_dimensions[row_idx].height = 18
 
-    # totais
-    row_total = len(filtered) + 2
-    ws.cell(row=row_total, column=1, value="TOTAL DE REGISTROS").font = Font(bold=True, size=10)
-    ws.cell(row=row_total, column=2, value=len(filtered)).font = Font(bold=True, size=10, color="002468")
+    # linha de totais
+    row_t = len(filtered) + 2
+    ws.cell(row=row_t, column=1, value="TOTAL DE REGISTROS").font = bold_font
+    ws.cell(row=row_t, column=2, value=len(filtered)).font = Font(bold=True, size=10, color="002468")
+    concluidos    = sum(1 for r in filtered if r.get("status","") in ("concluido","Concluído"))
+    parciais      = sum(1 for r in filtered if r.get("status","") in ("parcial","Parcial"))
+    nao_realizados= sum(1 for r in filtered if r.get("status","") in ("nao_realizado","Não realizado"))
+    ws.cell(row=row_t, column=3, value=f"Concluídos: {concluidos} | Parcial: {parciais} | Não realizados: {nao_realizados}").font = normal_font
 
     buf = BytesIO()
     wb.save(buf)
     buf.seek(0)
 
     periodo = f"{data_inicio}_a_{data_fim}" if data_inicio and data_fim else "completo"
-    nome = f"checklist_{periodo}.xlsx"
+    nome = f"checklist_gestor_{periodo}.xlsx"
     return send_file(buf, as_attachment=True, download_name=nome,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
