@@ -8,6 +8,20 @@ from datetime import datetime
 STORAGE_BUCKET = "Guia-Midias"
 
 
+def _ensure_bucket():
+    """Cria o bucket de storage se não existir."""
+    try:
+        buckets = _sb.storage.list_buckets()
+        nomes = [b.name for b in buckets] if buckets else []
+        print(f"[STORAGE] Buckets disponíveis: {nomes}")
+        if STORAGE_BUCKET not in nomes:
+            print(f"[STORAGE] Criando bucket '{STORAGE_BUCKET}'...")
+            _sb.storage.create_bucket(STORAGE_BUCKET, options={"public": True})
+            print(f"[STORAGE] Bucket '{STORAGE_BUCKET}' criado com sucesso.")
+    except Exception as e:
+        print(f"[STORAGE] _ensure_bucket erro: {e}")
+
+
 def upload_midia(file):
     """Faz upload de arquivo e retorna a URL pública."""
     ext      = file.filename.rsplit('.', 1)[-1].lower() if '.' in (file.filename or '') else 'bin'
@@ -16,6 +30,7 @@ def upload_midia(file):
     data     = file.read()
 
     if USE_SUPABASE:
+        _ensure_bucket()
         _sb.storage.from_(STORAGE_BUCKET).upload(
             filename, data, {"content-type": ctype, "x-upsert": "true"}
         )
