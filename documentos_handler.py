@@ -6,7 +6,6 @@ import os, uuid, mimetypes
 from datetime import datetime
 
 STORAGE_BUCKET = "Guia-Midias"
-STORAGE_FOLDER = "documentos"
 
 # ── Conexão ──────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -26,7 +25,7 @@ else:
 def upload_documento(file):
     """Faz upload do arquivo e retorna a URL pública."""
     ext      = file.filename.rsplit('.', 1)[-1].lower() if '.' in (file.filename or '') else 'bin'
-    filename = f"{STORAGE_FOLDER}/{uuid.uuid4().hex}.{ext}"
+    filename = f"{uuid.uuid4().hex}.{ext}"   # sem subpasta — mesmo padrão do Guia-Midias
     ctype    = file.content_type or mimetypes.guess_type(file.filename or '')[0] or 'application/octet-stream'
     data     = file.read()
 
@@ -38,10 +37,10 @@ def upload_documento(file):
     else:
         uploads = os.path.join(os.path.dirname(__file__), "static", "uploads")
         os.makedirs(uploads, exist_ok=True)
-        dest = os.path.join(uploads, os.path.basename(filename))
+        dest = os.path.join(uploads, filename)
         with open(dest, 'wb') as f:
             f.write(data)
-        return f"/static/uploads/{os.path.basename(filename)}"
+        return f"/static/uploads/{filename}"
 
 
 # ── Detectar tipo pelo nome do arquivo ───────────────────────────────────────
