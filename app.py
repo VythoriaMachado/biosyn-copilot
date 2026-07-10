@@ -97,6 +97,7 @@ def api_today():
                 "tempo_extra":          r.get("tempo_extra", 0),
                 "solicitante_extra":    r.get("solicitante_extra", ""),
                 "observacoes":          r.get("observacoes", ""),
+                "pauta_reuniao":        r.get("pauta_reuniao", ""),
             }
 
     # Atividades do Excel do dia que não estão no Outlook
@@ -352,9 +353,9 @@ def api_gestor_exportar():
         "Horário Início", "Horário Fim", "Tempo Previsto (min)",
         "Status", "Tempo Executado", "Houve Atraso?", "Motivo Atraso",
         "Reagendado?", "Prioridade", "Observações",
-        "Atividade Extra?", "Solicitante Extra", "Origem"
+        "Atividade Extra?", "Solicitante Extra", "Origem", "Pauta da Reunião"
     ]
-    col_widths = [13, 16, 20, 42, 15, 12, 22, 15, 20, 14, 28, 14, 12, 35, 15, 22, 14]
+    col_widths = [13, 16, 20, 42, 15, 12, 22, 15, 20, 14, 28, 14, 12, 35, 15, 22, 14, 50]
 
     for col_idx, (h, w) in enumerate(zip(headers, col_widths), 1):
         cell = ws.cell(row=1, column=col_idx, value=h)
@@ -402,6 +403,7 @@ def api_gestor_exportar():
             r.get("atividade_extra", ""),
             r.get("solicitante_extra", ""),
             r.get("origem", ""),
+            r.get("pauta_reuniao", ""),
         ]
 
         # cor da linha por status

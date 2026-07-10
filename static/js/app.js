@@ -335,6 +335,7 @@ const Checklist = {
     };
 
     const statusColor = v => v === 'Concluído' ? 'selected-green' : v === 'Parcial' ? 'selected-yellow' : 'selected-red';
+    const isReuniao = ['reunião','reuniao','meeting','call'].some(w => (a.titulo||'').toLowerCase().includes(w));
 
     let html = `
     <div class="form-section">
@@ -343,6 +344,16 @@ const Checklist = {
         ${['Concluído','Parcial','Não realizado'].map(v => `<button class="opt-btn ${ans.status===v?statusColor(v):''}" onclick="Checklist.pick(this,'${v}',true)">${v}</button>`).join('')}
       </div>
     </div>
+
+    ${isReuniao ? `
+    <div class="form-section reuniao-pauta-section">
+      <div class="form-section-label" style="color:var(--sky)"><i class="fa-solid fa-users"></i> Pauta da Reunião</div>
+      <textarea class="form-input" rows="4"
+        placeholder="Descreva os tópicos discutidos, decisões tomadas e próximos passos..."
+        oninput="Checklist.setField('pauta_reuniao', this.value)"
+        style="width:100%;resize:vertical;font-family:inherit"
+      >${ans.pauta_reuniao || ''}</textarea>
+    </div>` : ''}
 
     <div class="form-section">
       <div class="form-section-label"><i class="fa-solid fa-stopwatch"></i> Tempo executado</div>
@@ -726,12 +737,15 @@ const Checklist = {
       if (ans.tempo_executado === 'Acima do planejado' && ans.tempo_excedente) detail += ` (+${ans.tempo_excedente})`;
       if (ans.houve_atraso === 'Sim') detail += ` · Atraso: ${ans.motivo_atraso || 'não informado'}`;
       if (ans.atividade_extra === 'Sim') detail += ` · Extra: ${ans.nome_atividade_extra || ans.categoria_extra || '—'}`;
+      const pautaHtml = ans.pauta_reuniao ? `
+        <div class="summary-pauta"><i class="fa-solid fa-users" style="color:var(--sky)"></i> <b>Pauta:</b> ${ans.pauta_reuniao}</div>` : '';
       return `
         <div class="summary-item">
           <div class="summary-item-num">${i+1}</div>
           <div>
             <div class="summary-item-title">${a.titulo}</div>
             <div class="summary-item-detail">${detail}</div>
+            ${pautaHtml}
           </div>
         </div>`;
     }).join('');
@@ -806,6 +820,7 @@ const Checklist = {
         nome_atividade_extra: ans.nome_atividade_extra || '',
         tempo_extra: ans.tempo_extra || '',
         solicitante_extra: ans.solicitante_extra || '',
+        pauta_reuniao: ans.pauta_reuniao || '',
       };
     });
 

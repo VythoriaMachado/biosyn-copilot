@@ -301,6 +301,7 @@ body {
 }
 .summary-item-title { font-weight: 700; font-size: 14px; color: var(--navy); margin-bottom: 4px; }
 .summary-item-detail { font-size: 12px; color: var(--gray-600); line-height: 1.6; }
+.summary-pauta { font-size: 12px; color: var(--gray-700); margin-top: 6px; padding: 6px 10px; background: #EBF7FD; border-left: 3px solid var(--sky); border-radius: 4px; white-space: pre-wrap; }
 .summary-actions {
   display: flex; justify-content: center; gap: 12px; padding: 20px 0;
 }
