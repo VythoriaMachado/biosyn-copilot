@@ -1,13 +1,15 @@
 """
 Handler para o módulo Documentos.
-Supabase (nuvem) ou fallback local, mesma interface.
+Upload: reutiliza upload_midia do guias_handler (mesmo bucket Guia-Midias).
+Metadados: tabela 'documentos' no Supabase ou JSON local.
 """
-import os, uuid, mimetypes
+import os, json
 from datetime import datetime
 
-STORAGE_BUCKET = "Guia-Midias"
+# Upload: reutiliza exatamente a mesma função dos Guias (mesmo bucket, mesmo cliente)
+from guias_handler import upload_midia as upload_documento
 
-# ── Conexão ──────────────────────────────────────────────────────────────────
+# Conexão Supabase para operações na tabela 'documentos'
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
@@ -15,57 +17,29 @@ if SUPABASE_URL and SUPABASE_KEY:
     from supabase import create_client
     _sb = create_client(SUPABASE_URL, SUPABASE_KEY)
     USE_SUPABASE = True
-    print("[DOCUMENTOS] Conectado ao Supabase")
 else:
     USE_SUPABASE = False
-    print("[DOCUMENTOS] Sem Supabase — usando fallback local")
 
 
-# ── Upload de arquivo ─────────────────────────────────────────────────────────
-def upload_documento(file):
-    """Faz upload do arquivo e retorna a URL pública."""
-    ext      = file.filename.rsplit('.', 1)[-1].lower() if '.' in (file.filename or '') else 'bin'
-    filename = f"{uuid.uuid4().hex}.{ext}"   # sem subpasta — mesmo padrão do Guia-Midias
-    ctype    = file.content_type or mimetypes.guess_type(file.filename or '')[0] or 'application/octet-stream'
-    data     = file.read()
-
-    if USE_SUPABASE:
-        _sb.storage.from_(STORAGE_BUCKET).upload(
-            filename, data, {"content-type": ctype, "x-upsert": "true"}
-        )
-        return _sb.storage.from_(STORAGE_BUCKET).get_public_url(filename)
-    else:
-        uploads = os.path.join(os.path.dirname(__file__), "static", "uploads")
-        os.makedirs(uploads, exist_ok=True)
-        dest = os.path.join(uploads, filename)
-        with open(dest, 'wb') as f:
-            f.write(data)
-        return f"/static/uploads/{filename}"
-
-
-# ── Detectar tipo pelo nome do arquivo ───────────────────────────────────────
 def _tipo_arquivo(nome):
     ext = nome.rsplit('.', 1)[-1].lower() if '.' in nome else ''
-    if ext == 'pdf':        return 'pdf'
-    if ext in ('xls','xlsx','xlsm','csv'): return 'excel'
-    if ext in ('png','jpg','jpeg','gif','webp','bmp'): return 'imagem'
-    if ext in ('doc','docx'): return 'word'
+    if ext == 'pdf':                                    return 'pdf'
+    if ext in ('xls', 'xlsx', 'xlsm', 'csv'):          return 'excel'
+    if ext in ('png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'): return 'imagem'
+    if ext in ('doc', 'docx'):                          return 'word'
     return 'outro'
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────────────────────
 #  SUPABASE
-# ══════════════════════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────────────────────
 if USE_SUPABASE:
 
     def list_documentos(search='', categoria='', tipo=''):
         q = _sb.table('documentos').select('*').order('criado_em', desc=True)
-        if search:
-            q = q.ilike('nome', f'%{search}%')
-        if categoria:
-            q = q.eq('categoria', categoria)
-        if tipo:
-            q = q.eq('tipo', tipo)
+        if search:    q = q.ilike('nome', f'%{search}%')
+        if categoria: q = q.eq('categoria', categoria)
+        if tipo:      q = q.eq('tipo', tipo)
         return q.execute().data or []
 
     def get_documento(doc_id):
@@ -82,15 +56,12 @@ if USE_SUPABASE:
 
     def get_categorias_doc():
         r = _sb.table('documentos').select('categoria').execute()
-        cats = sorted({row['categoria'] for row in (r.data or []) if row.get('categoria')})
-        return cats
+        return sorted({row['categoria'] for row in (r.data or []) if row.get('categoria')})
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  FALLBACK LOCAL (sem Supabase)
-# ══════════════════════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────────────────────
+#  FALLBACK LOCAL
+# ─────────────────────────────────────────────────────────────────────────────
 else:
-    import json, os
-
     _DB_FILE = os.path.join(os.path.dirname(__file__), 'documentos_local.json')
 
     def _read():
@@ -105,13 +76,10 @@ else:
 
     def list_documentos(search='', categoria='', tipo=''):
         docs = _read()
-        if search:
-            docs = [d for d in docs if search.lower() in d.get('nome','').lower()]
-        if categoria:
-            docs = [d for d in docs if d.get('categoria') == categoria]
-        if tipo:
-            docs = [d for d in docs if d.get('tipo') == tipo]
-        return sorted(docs, key=lambda d: d.get('criado_em',''), reverse=True)
+        if search:    docs = [d for d in docs if search.lower() in d.get('nome', '').lower()]
+        if categoria: docs = [d for d in docs if d.get('categoria') == categoria]
+        if tipo:      docs = [d for d in docs if d.get('tipo') == tipo]
+        return sorted(docs, key=lambda d: d.get('criado_em', ''), reverse=True)
 
     def get_documento(doc_id):
         return next((d for d in _read() if str(d['id']) == str(doc_id)), None)
@@ -125,8 +93,7 @@ else:
         return payload
 
     def delete_documento(doc_id):
-        docs = [d for d in _read() if str(d['id']) != str(doc_id)]
-        _write(docs)
+        _write([d for d in _read() if str(d['id']) != str(doc_id)])
 
     def get_categorias_doc():
-        return sorted({d.get('categoria','') for d in _read() if d.get('categoria')})
+        return sorted({d.get('categoria', '') for d in _read() if d.get('categoria')})
