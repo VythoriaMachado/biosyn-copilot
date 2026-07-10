@@ -74,10 +74,15 @@ const App = {
     const tabEl = document.querySelector(`.wh-tab[data-view="${name}"]`);
     if (tabEl) tabEl.classList.add('active');
 
-    // keep WorkHub nav item always active
+    // show/hide workhub tab bar
+    const tabBar = $('workhubTabs');
+    if (tabBar) tabBar.style.display = name === 'desenvolvimento' ? 'none' : 'flex';
+
+    // highlight correct nav item
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const whNav = document.querySelector('.nav-item[data-view="workhub"]');
-    if (whNav) whNav.classList.add('active');
+    const isDevView = name === 'desenvolvimento';
+    const activeNav = document.querySelector(`.nav-item[data-view="${isDevView ? 'desenvolvimento' : 'workhub'}"]`);
+    if (activeNav) activeNav.classList.add('active');
 
     const exportBtn = $('btnExportWeekly');
     exportBtn.style.display = name === 'weekly' ? 'flex' : 'none';

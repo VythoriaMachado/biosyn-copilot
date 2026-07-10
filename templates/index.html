@@ -52,6 +52,9 @@
     <a href="#" class="nav-item active" data-view="workhub" onclick="WorkHub.open(); return false;">
       <i class="fa-solid fa-grid-2"></i><span>WorkHub</span>
     </a>
+    <a href="#" class="nav-item" data-view="desenvolvimento" onclick="App.switchView('desenvolvimento'); return false;">
+      <i class="fa-solid fa-rocket"></i><span>Meu Desenvolvimento</span>
+    </a>
     <a href="#" class="nav-item nav-item-gestor" data-view="gestor" onclick="AdminMode.toggle(); return false;" title="Acesso Gestor — visualizar dados da equipe">
       <i class="fa-solid fa-users-gear"></i><span>Modo Gestor</span>
     </a>
@@ -141,9 +144,6 @@
     </button>
     <button class="wh-tab" data-view="biblioteca"           onclick="WorkHub.switchTab('biblioteca',this)">
       <i class="fa-solid fa-book-open"></i> Guias
-    </button>
-    <button class="wh-tab" data-view="desenvolvimento"      onclick="WorkHub.switchTab('desenvolvimento',this)">
-      <i class="fa-solid fa-rocket"></i> Meu Desenvolvimento
     </button>
   </nav>
 
