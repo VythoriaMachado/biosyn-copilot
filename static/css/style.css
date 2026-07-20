@@ -159,6 +159,17 @@ body {
   transition: box-shadow .18s;
 }
 .stat-card:hover { box-shadow: var(--shadow-md); }
+.stat-card-clickable { cursor: pointer; position: relative; }
+.stat-card-clickable:hover { border-color: var(--sky); transform: translateY(-1px); }
+.stat-card-active { border-color: var(--sky) !important; background: #EBF7FD !important; box-shadow: 0 0 0 2px var(--sky); }
+.stat-card-active .stat-card-arrow { transform: rotate(180deg); color: var(--sky); }
+.stat-card-arrow { font-size: 11px; color: var(--gray-300); margin-left: auto; transition: transform .25s, color .2s; }
+.mg-detail-panel { background: white; border-radius: 12px; border: 1px solid var(--sky); padding: 0 20px 20px; margin-bottom: 20px; overflow: hidden; }
+.mg-detail-row { cursor: pointer; transition: background .15s; }
+.mg-detail-row:hover { background: #f5fbff; }
+.mg-detail-row td { border-bottom: 1px solid var(--gray-100); }
+.mg-detail-sub { display: none; }
+.mg-detail-row.mg-row-open + .mg-detail-sub { display: table-row; background: #fafafa; }
 .stat-icon {
   width: 44px; height: 44px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;

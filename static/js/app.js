@@ -1110,6 +1110,8 @@ const Weekly = {
 const Managerial = {
   charts: {},
   period: 'month',
+  _data: null,
+  _activeDetail: null,
 
   setPeriod(period, btn) {
     document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
@@ -1122,10 +1124,113 @@ const Managerial = {
     $('managerialContent').innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Carregando dados...</div>';
     try {
       const data = await API(`/api/managerial?period=${this.period}`);
+      this._data = data;
+      this._activeDetail = null;
       this.render(data);
     } catch(e) {
       $('managerialContent').innerHTML = '<div class="alert-strip alert-warning">Erro ao carregar painel gerencial.</div>';
     }
+  },
+
+  showDetail(key) {
+    const cfg = {
+      total:           { label: 'Todas as Atividades',    icon: 'fa-list',           color: 'var(--sky)',   status: null },
+      concluidas:      { label: 'Atividades Concluídas',  icon: 'fa-circle-check',   color: 'var(--green)', status: 'Concluído' },
+      parciais:        { label: 'Atividades Parciais',    icon: 'fa-circle-half-stroke', color: 'var(--yellow)', status: 'Parcial' },
+      nao_realizadas:  { label: 'Não Realizadas',         icon: 'fa-circle-xmark',   color: 'var(--red)',   status: 'Não realizado' },
+      taxa_conclusao:  { label: 'Taxa de Conclusão',      icon: 'fa-percent',        color: 'var(--yellow)', status: null },
+      horas_previstas: { label: 'Horas Planejadas',       icon: 'fa-clock',          color: 'var(--sky)',   status: null },
+      horas_executadas:{ label: 'Horas Executadas',       icon: 'fa-clock',          color: 'var(--green)', status: null },
+      reunioes:        { label: 'Reuniões',               icon: 'fa-people-group',   color: '#9C27B0',      status: null },
+      extras:          { label: 'Demandas Extras',        icon: 'fa-bolt',           color: 'var(--sky)',   status: null },
+    };
+
+    // toggle: clicou no mesmo fecha
+    if (this._activeDetail === key) {
+      this._activeDetail = null;
+      const panel = document.getElementById('managerialDetailPanel');
+      if (panel) { panel.style.maxHeight = '0'; panel.style.opacity = '0'; setTimeout(() => panel.remove(), 300); }
+      document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
+      return;
+    }
+    this._activeDetail = key;
+    document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
+    const clicked = document.querySelector(`.stat-card[data-key="${key}"]`);
+    if (clicked) clicked.classList.add('stat-card-active');
+
+    const meta = cfg[key] || { label: key, icon: 'fa-list', color: 'var(--navy)' };
+    const list = (this._data?.detail_lists || {})[key] || [];
+
+    const statusBadge = s => {
+      const m = { 'Concluído': ['var(--green)','#E8F5E9'], 'Parcial': ['var(--yellow)','#FFF8E1'], 'Não realizado': ['var(--red)','#FDECEA'], 'Pendente': ['var(--sky)','#E8F4FD'] };
+      const [fg, bg] = m[s] || ['var(--navy)','#f0f0f0'];
+      return `<span style="background:${bg};color:${fg};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap">${s || '—'}</span>`;
+    };
+    const prioBadge = p => {
+      const m = { 'Alta': '#E53935', 'Média': '#F4A900', 'Baixa': '#1DB954' };
+      return p ? `<span style="background:${m[p]||'#ccc'};color:white;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:700">${p}</span>` : '';
+    };
+
+    const rows = list.length === 0
+      ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma atividade neste período.</td></tr>`
+      : list.map(r => `
+        <tr class="mg-detail-row" onclick="this.classList.toggle('mg-row-open')">
+          <td style="padding:10px 12px;font-size:12px;color:var(--gray-500);white-space:nowrap">${r.data || '—'}</td>
+          <td style="padding:10px 12px;font-size:13px;font-weight:600;color:var(--navy)">${r.titulo || '—'}</td>
+          <td style="padding:10px 12px">${statusBadge(r.status)}</td>
+          <td style="padding:10px 12px">${prioBadge(r.prioridade)}</td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--gray-500)">${r.responsavel || '—'}</td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--gray-500)">${r.tempo_executado || r.horario_inicio ? `${r.horario_inicio||''}${r.horario_fim?' – '+r.horario_fim:''}` : '—'}</td>
+        </tr>
+        ${r.motivo_atraso || r.pauta_reuniao || r.categoria_extra ? `
+        <tr class="mg-detail-sub">
+          <td colspan="6" style="padding:0 12px 10px 36px;font-size:12px;color:var(--gray-600)">
+            ${r.motivo_atraso ? `<span style="color:var(--red)"><b>Motivo atraso:</b> ${r.motivo_atraso}</span>&nbsp;&nbsp;` : ''}
+            ${r.reagendado === 'Sim' ? `<span style="color:var(--sky)"><b>Reagendado:</b> Sim</span>&nbsp;&nbsp;` : ''}
+            ${r.pauta_reuniao ? `<div style="margin-top:4px;padding:6px 10px;background:#EBF7FD;border-left:3px solid var(--sky);border-radius:4px;white-space:pre-wrap"><b>Pauta:</b> ${r.pauta_reuniao}</div>` : ''}
+            ${r.categoria_extra ? `<span><b>Demanda extra:</b> ${r.categoria_extra}${r.solicitante_extra?' · '+r.solicitante_extra:''}</span>` : ''}
+          </td>
+        </tr>` : ''}
+      `).join('');
+
+    const html = `
+      <div id="managerialDetailPanel" class="mg-detail-panel" style="max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease">
+        <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <i class="fa-solid ${meta.icon}" style="color:${meta.color};font-size:18px"></i>
+            <span style="font-size:15px;font-weight:700;color:var(--navy)">${meta.label}</span>
+            <span style="background:var(--navy);color:white;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700">${list.length}</span>
+          </div>
+          <button onclick="Managerial.showDetail('${key}')" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--gray-200)">
+          <table style="width:100%;border-collapse:collapse;background:white">
+            <thead>
+              <tr style="background:var(--navy);color:white">
+                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap">Data</th>
+                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600">Atividade</th>
+                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600">Status</th>
+                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600">Prioridade</th>
+                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600">Responsável</th>
+                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600">Horário</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+
+    // injeta após o stats-grid
+    let existing = document.getElementById('managerialDetailPanel');
+    const statsGrid = $('managerialContent').querySelector('.stats-grid');
+    if (existing) existing.remove();
+    if (statsGrid) statsGrid.insertAdjacentHTML('afterend', html);
+    else $('managerialContent').insertAdjacentHTML('afterbegin', html);
+
+    requestAnimationFrame(() => {
+      const p = document.getElementById('managerialDetailPanel');
+      if (p) { p.style.maxHeight = '600px'; p.style.opacity = '1'; }
+    });
   },
 
   render(data) {
@@ -1155,16 +1260,16 @@ const Managerial = {
     $('managerialContent').innerHTML = `
       ${alertsHtml}
 
-      <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-list" style="color:#099CD6"></i></div><div class="stat-body"><div class="stat-label">Total Atividades</div><div class="stat-value">${data.total_atividades}</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#E8F5E9"><i class="fa-solid fa-circle-check" style="color:#1DB954"></i></div><div class="stat-body"><div class="stat-label">Concluídas</div><div class="stat-value" style="color:var(--green)">${data.concluidas}</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#FFF8E1"><i class="fa-solid fa-circle-half-stroke" style="color:#F4A900"></i></div><div class="stat-body"><div class="stat-label">Parciais</div><div class="stat-value" style="color:var(--yellow)">${data.parciais ?? '—'}</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#FDECEA"><i class="fa-solid fa-circle-xmark" style="color:#E53935"></i></div><div class="stat-body"><div class="stat-label">Não realizadas</div><div class="stat-value" style="color:var(--red)">${data.nao_realizadas ?? '—'}</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#FFF3E0"><i class="fa-solid fa-percent" style="color:#F4A900"></i></div><div class="stat-body"><div class="stat-label">Taxa Conclusão</div><div class="stat-value" style="color:var(--yellow)">${data.taxa_conclusao}%</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-clock" style="color:#099CD6"></i></div><div class="stat-body"><div class="stat-label">Horas Planejadas</div><div class="stat-value">${data.horas_previstas ?? '—'}h</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#E8F5E9"><i class="fa-solid fa-clock" style="color:#1DB954"></i></div><div class="stat-body"><div class="stat-label">Horas Executadas</div><div class="stat-value" style="color:var(--green)">${data.horas_executadas ?? '—'}h</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#F3E5F5"><i class="fa-solid fa-people-group" style="color:#9C27B0"></i></div><div class="stat-body"><div class="stat-label">Reuniões</div><div class="stat-value">${data.reunioes}</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-bolt" style="color:#099CD6"></i></div><div class="stat-body"><div class="stat-label">Demandas Extras</div><div class="stat-value">${data.extras_total}</div></div></div>
+      <div class="stats-grid" style="margin-bottom:4px">
+        <div class="stat-card stat-card-clickable" data-key="total"           onclick="Managerial.showDetail('total')"><div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-list" style="color:#099CD6"></i></div><div class="stat-body"><div class="stat-label">Total Atividades</div><div class="stat-value">${data.total_atividades}</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="concluidas"      onclick="Managerial.showDetail('concluidas')"><div class="stat-icon" style="background:#E8F5E9"><i class="fa-solid fa-circle-check" style="color:#1DB954"></i></div><div class="stat-body"><div class="stat-label">Concluídas</div><div class="stat-value" style="color:var(--green)">${data.concluidas}</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="parciais"        onclick="Managerial.showDetail('parciais')"><div class="stat-icon" style="background:#FFF8E1"><i class="fa-solid fa-circle-half-stroke" style="color:#F4A900"></i></div><div class="stat-body"><div class="stat-label">Parciais</div><div class="stat-value" style="color:var(--yellow)">${data.parciais ?? '—'}</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="nao_realizadas"  onclick="Managerial.showDetail('nao_realizadas')"><div class="stat-icon" style="background:#FDECEA"><i class="fa-solid fa-circle-xmark" style="color:#E53935"></i></div><div class="stat-body"><div class="stat-label">Não realizadas</div><div class="stat-value" style="color:var(--red)">${data.nao_realizadas ?? '—'}</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="taxa_conclusao"  onclick="Managerial.showDetail('taxa_conclusao')"><div class="stat-icon" style="background:#FFF3E0"><i class="fa-solid fa-percent" style="color:#F4A900"></i></div><div class="stat-body"><div class="stat-label">Taxa Conclusão</div><div class="stat-value" style="color:var(--yellow)">${data.taxa_conclusao}%</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="horas_previstas" onclick="Managerial.showDetail('horas_previstas')"><div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-clock" style="color:#099CD6"></i></div><div class="stat-body"><div class="stat-label">Horas Planejadas</div><div class="stat-value">${data.horas_previstas ?? '—'}h</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="horas_executadas" onclick="Managerial.showDetail('horas_executadas')"><div class="stat-icon" style="background:#E8F5E9"><i class="fa-solid fa-clock" style="color:#1DB954"></i></div><div class="stat-body"><div class="stat-label">Horas Executadas</div><div class="stat-value" style="color:var(--green)">${data.horas_executadas ?? '—'}h</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="reunioes"        onclick="Managerial.showDetail('reunioes')"><div class="stat-icon" style="background:#F3E5F5"><i class="fa-solid fa-people-group" style="color:#9C27B0"></i></div><div class="stat-body"><div class="stat-label">Reuniões</div><div class="stat-value">${data.reunioes}</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
+        <div class="stat-card stat-card-clickable" data-key="extras"          onclick="Managerial.showDetail('extras')"><div class="stat-icon" style="background:#E8F4FD"><i class="fa-solid fa-bolt" style="color:#099CD6"></i></div><div class="stat-body"><div class="stat-label">Demandas Extras</div><div class="stat-value">${data.extras_total}</div></div><i class="fa-solid fa-chevron-down stat-card-arrow"></i></div>
       </div>
 
       <div class="charts-grid">

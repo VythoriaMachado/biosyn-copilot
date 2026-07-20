@@ -418,6 +418,42 @@ def get_managerial_data(period="month", usuario=None):
             horas_exec_min += tp
     horas_executadas = round(horas_exec_min / 60, 1)
 
+    def _brief(r):
+        return {
+            "data":           r.get("data", ""),
+            "dia_semana":     r.get("dia_semana", ""),
+            "titulo":         r.get("titulo", ""),
+            "status":         r.get("status", ""),
+            "responsavel":    r.get("responsavel", ""),
+            "prioridade":     r.get("prioridade", ""),
+            "horario_inicio": r.get("horario_inicio", ""),
+            "horario_fim":    r.get("horario_fim", ""),
+            "tempo_executado":r.get("tempo_executado", ""),
+            "motivo_atraso":  r.get("motivo_atraso", ""),
+            "reagendado":     r.get("reagendado", ""),
+            "origem":         r.get("origem", ""),
+            "pauta_reuniao":  r.get("pauta_reuniao", ""),
+            "categoria_extra":r.get("categoria_extra", ""),
+            "solicitante_extra": r.get("solicitante_extra", ""),
+        }
+
+    _is_reuniao = lambda r: any(
+        w in str(r.get("titulo", "")).lower()
+        for w in ["reunião", "meeting", "call", "sync", "alinhamento"]
+    )
+
+    detail_lists = {
+        "total":          [_brief(r) for r in records],
+        "concluidas":     [_brief(r) for r in records if r.get("status") == "Concluído"],
+        "parciais":       [_brief(r) for r in records if r.get("status") == "Parcial"],
+        "nao_realizadas": [_brief(r) for r in records if r.get("status") == "Não realizado"],
+        "reunioes":       [_brief(r) for r in records if _is_reuniao(r)],
+        "extras":         [_brief(r) for r in records if r.get("atividade_extra") == "Sim"],
+        "horas_previstas":  [_brief(r) for r in records],
+        "horas_executadas": [_brief(r) for r in records if r.get("status") == "Concluído"],
+        "taxa_conclusao":   [_brief(r) for r in records],
+    }
+
     return {
         "period": period, "total_atividades": total,
         "concluidas": concluidas, "parciais": parciais, "nao_realizadas": nao_real,
@@ -425,6 +461,7 @@ def get_managerial_data(period="month", usuario=None):
         "horas_previstas": horas_previstas, "horas_executadas": horas_executadas,
         "by_categoria": by_categoria, "heatmap_days": heatmap,
         "top_activities": top_activities, "motivos_atraso": motivos,
+        "detail_lists": detail_lists,
     }
 
 
