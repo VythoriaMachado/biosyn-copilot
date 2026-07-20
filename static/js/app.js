@@ -1149,7 +1149,7 @@ const Managerial = {
     if (this._activeDetail === key) {
       this._activeDetail = null;
       const panel = document.getElementById('managerialDetailPanel');
-      if (panel) { panel.style.maxHeight = '0'; panel.style.opacity = '0'; setTimeout(() => panel.remove(), 300); }
+      if (panel) panel.remove();
       document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
       return;
     }
@@ -1194,7 +1194,7 @@ const Managerial = {
       `).join('');
 
     const html = `
-      <div id="managerialDetailPanel" class="mg-detail-panel" style="max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease">
+      <div id="managerialDetailPanel" class="mg-detail-panel">
         <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:10px">
             <i class="fa-solid ${meta.icon}" style="color:${meta.color};font-size:18px"></i>
@@ -1227,10 +1227,9 @@ const Managerial = {
     if (statsGrid) statsGrid.insertAdjacentHTML('afterend', html);
     else $('managerialContent').insertAdjacentHTML('afterbegin', html);
 
-    requestAnimationFrame(() => {
-      const p = document.getElementById('managerialDetailPanel');
-      if (p) { p.style.maxHeight = '600px'; p.style.opacity = '1'; }
-    });
+    // rola suavemente até o painel
+    const p = document.getElementById('managerialDetailPanel');
+    if (p) setTimeout(() => p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   },
 
   render(data) {
