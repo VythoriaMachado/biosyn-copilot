@@ -219,9 +219,9 @@ def api_add_pending():
             "tempo_previsto": 0,
             "descricao":      data.get("descricao", ""),
             "responsavel":    data.get("responsavel", ""),
-            "origem":         "Agendado",
+            "origem":         "Reagendado",
             "status":         "Pendente",
-            "prioridade":     "Alta",
+            "prioridade":     data.get("prioridade", "Média"),
             "solicitante_extra": data.get("solicitante", ""),
             "categoria_extra":   data.get("departamento", ""),
         }])

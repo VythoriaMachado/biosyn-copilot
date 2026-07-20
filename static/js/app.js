@@ -870,7 +870,32 @@ const Checklist = {
       if (json.success) {
         ChecklistHistory._adminUnlocked = false;
         this._clearDraft();
-        showToast(`✓ ${json.saved} atividades salvas com sucesso!`, 'success');
+
+        // Reagendar automaticamente atividades não realizadas com reagendado=Sim
+        const reagendar = this.activities
+          .map((a, i) => ({ a, ans: this.answers[i] }))
+          .filter(({ ans }) => ans.status === 'Não realizado' && ans.reagendado === 'Sim');
+
+        if (reagendar.length > 0) {
+          const usuario = UserProfile.get()?.name || '';
+          await Promise.all(reagendar.map(({ a, ans }) =>
+            fetch('/api/planning/add-pending', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                titulo:      a.titulo,
+                descricao:   a.descricao || '',
+                responsavel: usuario,
+                prioridade:  ans.prioridade || 'Média',
+              }),
+            })
+          ));
+          const nomes = reagendar.map(({ a }) => a.titulo).join(', ');
+          showToast(`✓ ${json.saved} atividades salvas. ${reagendar.length} reagendada(s) para amanhã: ${nomes}`, 'success');
+        } else {
+          showToast(`✓ ${json.saved} atividades salvas com sucesso!`, 'success');
+        }
+
         if (this.historyMode) {
           ChecklistHistory.clear();
         } else {
