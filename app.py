@@ -514,6 +514,42 @@ def api_delete_documento(doc_id):
         return jsonify({"error": str(e)}), 500
 
 
+# ── ALINHAMENTOS TIME ────────────────────────────────────────────────────────
+
+from alinhamentos_handler import (
+    list_alinhamentos, get_alinhamento, create_alinhamento,
+    update_alinhamento, delete_alinhamento,
+)
+
+@app.route("/api/alinhamentos")
+def api_list_alinhamentos():
+    search = request.args.get("search", "")
+    tipo   = request.args.get("tipo", "")
+    status = request.args.get("status", "")
+    return jsonify(list_alinhamentos(search=search, tipo=tipo, status=status))
+
+@app.route("/api/alinhamentos", methods=["POST"])
+def api_create_alinhamento():
+    payload = request.get_json()
+    if not payload or not payload.get("titulo"):
+        return jsonify({"error": "Título obrigatório"}), 400
+    result = create_alinhamento(payload)
+    return jsonify(result), 201
+
+@app.route("/api/alinhamentos/<aid>", methods=["PATCH"])
+def api_update_alinhamento(aid):
+    payload = request.get_json()
+    result = update_alinhamento(aid, payload)
+    if not result:
+        return jsonify({"error": "Não encontrado"}), 404
+    return jsonify(result)
+
+@app.route("/api/alinhamentos/<aid>", methods=["DELETE"])
+def api_delete_alinhamento(aid):
+    delete_alinhamento(aid)
+    return jsonify({"success": True})
+
+
 # ── GUIAS (COMO FAZER) ───────────────────────────────────────────────────────
 
 from guias_handler import (

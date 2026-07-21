@@ -97,6 +97,7 @@ const App = {
     if (name === 'biblioteca')      GuiaBiblioteca.load();
     if (name === 'documentos')      Documentos.load();
     if (name === 'desenvolvimento') MeuDev.load();
+    if (name === 'alinhamentos')    Alinhamentos.load();
   },
 
   loadChecklist() { App.switchView('checklist'); },
@@ -2287,6 +2288,282 @@ const GestorChecklist = {
     window.location.href = `/api/gestor/checklist/exportar?${params}`;
   },
 };
+
+// ── ALINHAMENTOS TIME ─────────────────────────────────────────────────────
+const Alinhamentos = {
+  _data: [],
+  _filter: 'todos',
+  _detailId: null,
+
+  async load() {
+    $('alinGrid').innerHTML = '<div class="alin-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+    try {
+      this._data = await API('/api/alinhamentos');
+      this.render();
+    } catch(e) {
+      $('alinGrid').innerHTML = '<div class="alin-empty">Erro ao carregar alinhamentos.</div>';
+    }
+  },
+
+  setFilter(f, el) {
+    this._filter = f;
+    document.querySelectorAll('.alin-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    this.render();
+  },
+
+  _filtered() {
+    const q = ($('alinSearch')?.value || '').toLowerCase();
+    return this._data.filter(d => {
+      const [ftype, fval] = this._filter.includes(':') ? this._filter.split(':') : ['todos',''];
+      const mf = this._filter === 'todos'
+        || (ftype === 'tipo'   && d.tipo   === fval)
+        || (ftype === 'status' && d.status === fval);
+      const ms = !q || (d.titulo||'').toLowerCase().includes(q)
+        || (d.descricao||'').toLowerCase().includes(q)
+        || (d.participantes||[]).some(p => p.toLowerCase().includes(q))
+        || (d.adiant_fornecedor||'').toLowerCase().includes(q);
+      return mf && ms;
+    }).sort((a,b) => (b.criado_em||0) - (a.criado_em||0));
+  },
+
+  _badgeClass(tipo) {
+    return 'alin-badge alin-badge-' + ({Lançamento:'lancamento',Acordo:'acordo',Projeto:'projeto',Adiantamento:'adiantamento'}[tipo]||'outro');
+  },
+  _dotClass(status) {
+    return 'alin-status-dot alin-dot-' + ({Pendente:'pendente','Em andamento':'andamento','Concluído':'concluido',Cancelado:'cancelado'}[status]||'pendente');
+  },
+  _ini(n) { return (n||'').trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase(); },
+  _fmtDT(ts) { const d=new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); },
+
+  _adiantPreview(d) {
+    if (d.tipo !== 'Adiantamento') return '';
+    const chips = [];
+    if (d.adiant_data)       chips.push(`<span class="alin-adiant-chip">📅 ${d.adiant_data}</span>`);
+    if (d.adiant_fornecedor) chips.push(`<span class="alin-adiant-chip">🏢 ${d.adiant_fornecedor}</span>`);
+    if (d.adiant_valor)      chips.push(`<span class="alin-adiant-chip">💰 R$ ${d.adiant_valor}</span>`);
+    if (d.adiant_unidade)    chips.push(`<span class="alin-adiant-chip">🏛 ${d.adiant_unidade}</span>`);
+    return chips.length ? `<div class="alin-adiant-chips">${chips.join('')}</div>` : '';
+  },
+
+  _lcPreview(d) {
+    if (d.tipo !== 'Lançamento') return '';
+    const rows = [
+      {l:'Classe', a:d.classe_atual, b:d.classe_novo},
+      {l:'C.Custo', a:d.cc_atual, b:d.cc_novo},
+      {l:'Projeto', a:d.projeto_atual, b:d.projeto_novo}
+    ].filter(r => r.a || r.b);
+    if (!rows.length) return '';
+    return '<div class="alin-lc-preview">' + rows.map(r =>
+      `<span class="alin-lc-tag">${r.l}: ${r.a||'—'}</span><span class="alin-lc-arrow">→</span><span class="alin-lc-tag">${r.b||'—'}</span>`
+    ).join(' ') + '</div>';
+  },
+
+  render() {
+    const f = this._filtered();
+    if (!f.length) {
+      $('alinGrid').innerHTML = '<div class="alin-empty"><i class="fa-solid fa-inbox" style="font-size:36px;display:block;margin-bottom:8px"></i>Nenhum alinhamento encontrado</div>';
+      return;
+    }
+    $('alinGrid').innerHTML = f.map(d => `
+      <div class="alin-card" onclick="Alinhamentos.openDetail('${d.id}')">
+        <div class="alin-card-top">
+          <div class="alin-card-title">${d.titulo||''}</div>
+          <span class="${this._badgeClass(d.tipo)}">${d.tipo}</span>
+        </div>
+        <div class="alin-card-desc">${d.descricao||'—'}</div>
+        ${this._adiantPreview(d)}${this._lcPreview(d)}
+        <div class="alin-card-meta">
+          <span class="${this._dotClass(d.status)}"></span><span>${d.status}</span>
+          ${(d.participantes||[]).slice(0,4).map(p => `<span class="alin-avatar" title="${p}">${this._ini(p)}</span>`).join('')}
+          ${(d.participantes||[]).length > 4 ? `<span class="alin-avatar">+${d.participantes.length-4}</span>` : ''}
+        </div>
+        <div class="alin-card-footer">
+          <span>${(d.updates||[]).length} atualização${(d.updates||[]).length!==1?'ões':''}</span>
+          <span>${d.data_ref || (d.criado_em ? new Date(d.criado_em).toLocaleDateString('pt-BR') : '')}</span>
+        </div>
+      </div>`).join('');
+  },
+
+  // ── FORM ──
+  onTipoChange() {
+    const tipo = $('alinTipo').value;
+    $('alinLcSection').style.display     = tipo === 'Lançamento'   ? '' : 'none';
+    $('alinAdiantSection').style.display = tipo === 'Adiantamento' ? '' : 'none';
+  },
+
+  _clearForm() {
+    ['alinEditId','alinTitulo','alinDescricao','alinParticipantes','alinDataRef',
+     'alinClasseAtual','alinCCAtual','alinProjetoAtual',
+     'alinClasseNovo','alinCCNovo','alinProjetoNovo',
+     'alinAdiantData','alinAdiantValor','alinAdiantFornecedor'
+    ].forEach(id => { const e=$(id); if(e) e.value=''; });
+    document.querySelector('input[name=alinUnidade][value=Matriz]').checked = true;
+  },
+
+  openNew() {
+    $('alinFormTitle').textContent = 'Novo Alinhamento';
+    this._clearForm();
+    $('alinTipo').value = 'Acordo'; $('alinStatus').value = 'Pendente';
+    this.onTipoChange();
+    $('alinFormOverlay').style.display = 'flex';
+    setTimeout(() => $('alinTitulo').focus(), 100);
+  },
+
+  openEdit(id) {
+    const e = this._data.find(d => d.id === id); if (!e) return;
+    $('alinFormTitle').textContent = 'Editar Alinhamento';
+    $('alinEditId').value      = id;
+    $('alinTitulo').value      = e.titulo || '';
+    $('alinDescricao').value   = e.descricao || '';
+    $('alinParticipantes').value = (e.participantes||[]).join(', ');
+    $('alinDataRef').value     = e.data_ref || '';
+    $('alinTipo').value        = e.tipo || 'Acordo';
+    $('alinStatus').value      = e.status || 'Pendente';
+    $('alinClasseAtual').value = e.classe_atual || '';
+    $('alinCCAtual').value     = e.cc_atual || '';
+    $('alinProjetoAtual').value= e.projeto_atual || '';
+    $('alinClasseNovo').value  = e.classe_novo || '';
+    $('alinCCNovo').value      = e.cc_novo || '';
+    $('alinProjetoNovo').value = e.projeto_novo || '';
+    $('alinAdiantData').value     = e.adiant_data || '';
+    $('alinAdiantValor').value    = e.adiant_valor || '';
+    $('alinAdiantFornecedor').value = e.adiant_fornecedor || '';
+    const unid = document.querySelector(`input[name=alinUnidade][value="${e.adiant_unidade||'Matriz'}"]`);
+    if (unid) unid.checked = true;
+    this.onTipoChange();
+    $('alinFormOverlay').style.display = 'flex';
+  },
+
+  closeForm() { $('alinFormOverlay').style.display = 'none'; },
+
+  async save() {
+    const titulo = $('alinTitulo').value.trim();
+    if (!titulo) { $('alinTitulo').focus(); return; }
+    const id   = $('alinEditId').value;
+    const tipo = $('alinTipo').value;
+    const payload = {
+      titulo, tipo, status: $('alinStatus').value,
+      descricao: $('alinDescricao').value.trim(),
+      participantes: $('alinParticipantes').value.split(',').map(s=>s.trim()).filter(Boolean),
+      data_ref: $('alinDataRef').value.trim(),
+      classe_atual: $('alinClasseAtual').value.trim(), cc_atual: $('alinCCAtual').value.trim(), projeto_atual: $('alinProjetoAtual').value.trim(),
+      classe_novo:  $('alinClasseNovo').value.trim(),  cc_novo:  $('alinCCNovo').value.trim(),  projeto_novo:  $('alinProjetoNovo').value.trim(),
+      adiant_data: $('alinAdiantData').value.trim(), adiant_valor: $('alinAdiantValor').value.trim(),
+      adiant_fornecedor: $('alinAdiantFornecedor').value.trim(),
+      adiant_unidade: document.querySelector('input[name=alinUnidade]:checked')?.value || 'Matriz',
+    };
+    try {
+      if (id) {
+        const updated = await API(`/api/alinhamentos/${id}`, { method:'PATCH', body: JSON.stringify(payload) });
+        const idx = this._data.findIndex(d => d.id === id);
+        if (idx > -1) this._data[idx] = updated;
+      } else {
+        payload.id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+        payload.criado_em = Date.now();
+        payload.updates = [];
+        const created = await API('/api/alinhamentos', { method:'POST', body: JSON.stringify(payload) });
+        this._data.unshift(created || payload);
+      }
+      this.render(); this.closeForm();
+      if (id && this._detailId === id) this.openDetail(id);
+      showToast('✓ Alinhamento salvo!', 'success');
+    } catch(e) { showToast('Erro ao salvar alinhamento.', 'error'); }
+  },
+
+  // ── DETALHE ──
+  openDetail(id) {
+    this._detailId = id;
+    const e = this._data.find(d => d.id === id); if (!e) return;
+    $('alinDetailTitulo').textContent = e.titulo || '';
+    $('alinDetailBadge').className    = this._badgeClass(e.tipo);
+    $('alinDetailBadge').textContent  = e.tipo;
+    $('alinDetailStatus').value       = e.status || 'Pendente';
+    $('alinDetailData').textContent   = e.data_ref || (e.criado_em ? new Date(e.criado_em).toLocaleDateString('pt-BR') : '');
+    $('alinDetailDesc').textContent   = e.descricao || '—';
+
+    // Participantes
+    $('alinDetailPartic').innerHTML = (e.participantes||[]).length
+      ? (e.participantes||[]).map(p => `<span class="alin-avatar" title="${p}">${this._ini(p)}</span> <span style="font-size:13px;color:#555">${p}</span>`).join('&nbsp;&nbsp;')
+      : '<span style="color:var(--gray-300);font-size:13px">Nenhum participante</span>';
+
+    // Lançamento
+    const lcRows = [
+      {l:'Classe', a:e.classe_atual, b:e.classe_novo},
+      {l:'Centro de Custo', a:e.cc_atual, b:e.cc_novo},
+      {l:'Projeto', a:e.projeto_atual, b:e.projeto_novo}
+    ].filter(r => r.a || r.b);
+    if (e.tipo === 'Lançamento' && lcRows.length) {
+      $('alinDetailLcRows').innerHTML = lcRows.map(r =>
+        `<tr><td style="padding:8px 10px;border:1px solid var(--gray-200)"><strong>${r.l}</strong></td>
+         <td style="padding:8px 10px;border:1px solid var(--gray-200)">${r.a||'—'}</td>
+         <td style="padding:8px 10px;border:1px solid var(--gray-200);text-align:center;color:var(--sky);font-weight:700">→</td>
+         <td style="padding:8px 10px;border:1px solid var(--gray-200)">${r.b||'—'}</td></tr>`
+      ).join('');
+      $('alinDetailLc').style.display = '';
+    } else { $('alinDetailLc').style.display = 'none'; }
+
+    // Adiantamento
+    const adCards = [
+      {l:'Data', v:e.adiant_data}, {l:'Fornecedor', v:e.adiant_fornecedor},
+      {l:'Valor', v:e.adiant_valor ? 'R$ '+e.adiant_valor : null}, {l:'Unidade', v:e.adiant_unidade}
+    ].filter(c => c.v);
+    if (e.tipo === 'Adiantamento' && adCards.length) {
+      $('alinDetailAdiantCards').innerHTML = adCards.map(c =>
+        `<div class="alin-adiant-card"><div class="ac-label">${c.l}</div><div class="ac-value">${c.v}</div></div>`
+      ).join('');
+      $('alinDetailAdiant').style.display = '';
+    } else { $('alinDetailAdiant').style.display = 'none'; }
+
+    this._renderUpdates(e);
+    $('alinUpdInput').value = '';
+    $('alinDetailOverlay').style.display = 'flex';
+  },
+
+  _renderUpdates(e) {
+    const u = e.updates || [];
+    $('alinDetailUpdates').innerHTML = !u.length
+      ? '<div style="color:var(--gray-300);font-size:13px;margin-bottom:8px">Nenhuma atualização ainda.</div>'
+      : u.slice().reverse().map(x =>
+          `<div class="alin-upd-item"><div class="alin-upd-meta">${this._fmtDT(x.ts)}</div><div class="alin-upd-text">${x.texto}</div></div>`
+        ).join('');
+  },
+
+  async updateStatus() {
+    const e = this._data.find(d => d.id === this._detailId); if (!e) return;
+    e.status = $('alinDetailStatus').value;
+    try {
+      await API(`/api/alinhamentos/${e.id}`, { method:'PATCH', body: JSON.stringify({ status: e.status }) });
+      this.render();
+    } catch {}
+  },
+
+  async addUpdate() {
+    const inp = $('alinUpdInput'); const txt = inp.value.trim(); if (!txt) return;
+    const e = this._data.find(d => d.id === this._detailId); if (!e) return;
+    if (!e.updates) e.updates = [];
+    e.updates.push({ ts: Date.now(), texto: txt });
+    try {
+      await API(`/api/alinhamentos/${e.id}`, { method:'PATCH', body: JSON.stringify({ updates: e.updates }) });
+      this._renderUpdates(e); this.render(); inp.value = ''; inp.focus();
+      showToast('✓ Atualização adicionada!', 'success');
+    } catch { showToast('Erro ao salvar atualização.', 'error'); }
+  },
+
+  async deleteEntry() {
+    if (!confirm('Excluir este alinhamento?')) return;
+    try {
+      await API(`/api/alinhamentos/${this._detailId}`, { method:'DELETE' });
+      this._data = this._data.filter(d => d.id !== this._detailId);
+      this.render(); this.closeDetail();
+      showToast('✓ Alinhamento excluído.', 'success');
+    } catch { showToast('Erro ao excluir.', 'error'); }
+  },
+
+  openEditFromDetail() { this.closeDetail(); this.openEdit(this._detailId); },
+  closeDetail() { $('alinDetailOverlay').style.display = 'none'; },
+};
+
 
 // ── DOCUMENTOS ────────────────────────────────────────────────────────────
 const Documentos = {

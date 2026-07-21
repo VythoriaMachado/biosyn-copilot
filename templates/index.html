@@ -148,6 +148,9 @@
     <button class="wh-tab" data-view="biblioteca"           onclick="WorkHub.switchTab('biblioteca',this)">
       <i class="fa-solid fa-book-open"></i> Guias
     </button>
+    <button class="wh-tab" data-view="alinhamentos"        onclick="WorkHub.switchTab('alinhamentos',this)">
+      <i class="fa-solid fa-people-arrows"></i> Alinhamentos
+    </button>
   </nav>
 
   <!-- ═══════════════════ GUIA DRAWER ═══════════════════════════ -->
@@ -575,6 +578,184 @@
         <button class="btn-primary" id="docBtnEnviar" onclick="Documentos.confirmarUpload()">
           <i class="fa-solid fa-cloud-arrow-up"></i> Enviar
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ALINHAMENTOS TIME ── -->
+  <section class="view" id="view-alinhamentos">
+    <div class="page-hero">
+      <div>
+        <h2><i class="fa-solid fa-people-arrows" style="color:var(--sky);margin-right:8px"></i>Alinhamentos Time</h2>
+        <p style="opacity:.7;font-size:14px">Acordos, lançamentos e decisões do time financeiro</p>
+      </div>
+      <button class="btn-primary" onclick="Alinhamentos.openNew()">
+        <i class="fa-solid fa-plus"></i> Novo Alinhamento
+      </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="alin-filters">
+      <div class="alin-chip active" onclick="Alinhamentos.setFilter('todos',this)">Todos</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('tipo:Lançamento',this)"><i class="fa-solid fa-rotate"></i> Lançamentos</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('tipo:Acordo',this)"><i class="fa-solid fa-handshake"></i> Acordos</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('tipo:Projeto',this)"><i class="fa-solid fa-folder"></i> Projetos</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('tipo:Adiantamento',this)"><i class="fa-solid fa-money-bill-wave"></i> Adiantamentos</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('tipo:Outro',this)"><i class="fa-solid fa-lightbulb"></i> Outros</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('status:Pendente',this)">🟡 Pendente</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('status:Em andamento',this)">🔵 Em andamento</div>
+      <div class="alin-chip" onclick="Alinhamentos.setFilter('status:Concluído',this)">🟢 Concluído</div>
+      <input class="alin-search" type="text" placeholder="🔍 Buscar..." id="alinSearch" oninput="Alinhamentos.render()">
+    </div>
+
+    <!-- Grid de cards -->
+    <div class="alin-grid" id="alinGrid">
+      <div class="alin-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>
+    </div>
+  </section>
+
+  <!-- MODAL: NOVO/EDITAR ALINHAMENTO -->
+  <div class="dev-modal-overlay" id="alinFormOverlay" style="display:none" onclick="if(event.target===this)Alinhamentos.closeForm()">
+    <div class="dev-modal" style="max-width:620px;width:100%">
+      <div class="dev-modal-header">
+        <span id="alinFormTitle">Novo Alinhamento</span>
+        <button onclick="Alinhamentos.closeForm()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dev-modal-body">
+        <input type="hidden" id="alinEditId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label class="alin-label">Tipo</label>
+            <select id="alinTipo" class="form-input" onchange="Alinhamentos.onTipoChange()">
+              <option>Lançamento</option><option>Acordo</option><option>Projeto</option>
+              <option>Adiantamento</option><option>Outro</option>
+            </select>
+          </div>
+          <div>
+            <label class="alin-label">Status</label>
+            <select id="alinStatus" class="form-input">
+              <option>Pendente</option><option>Em andamento</option><option>Concluído</option><option>Cancelado</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="alin-label">Título *</label>
+          <input type="text" id="alinTitulo" class="form-input" placeholder="Ex: Ajuste de lançamento — NF 1234">
+        </div>
+
+        <!-- CAMPOS LANÇAMENTO -->
+        <div id="alinLcSection" class="alin-lc-section" style="display:none">
+          <div class="alin-lc-title"><i class="fa-solid fa-rotate" style="color:var(--sky)"></i> Alteração de classificação</div>
+          <div style="display:grid;grid-template-columns:1fr 24px 1fr;gap:8px;align-items:start">
+            <div>
+              <div class="alin-col-head">Situação atual</div>
+              <div style="margin-bottom:8px"><span class="alin-sublabel">Classe</span><input type="text" id="alinClasseAtual" class="form-input" placeholder="Ex: Desp. operacionais"></div>
+              <div style="margin-bottom:8px"><span class="alin-sublabel">Centro de Custo</span><input type="text" id="alinCCAtual" class="form-input" placeholder="Ex: Financeiro"></div>
+              <div><span class="alin-sublabel">Projeto</span><input type="text" id="alinProjetoAtual" class="form-input" placeholder="Ex: 845"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;padding-top:30px;color:var(--sky);font-weight:700;font-size:18px">→</div>
+            <div>
+              <div class="alin-col-head">Alterar para</div>
+              <div style="margin-bottom:8px"><span class="alin-sublabel">Classe</span><input type="text" id="alinClasseNovo" class="form-input" placeholder="Ex: Desp. administrativas"></div>
+              <div style="margin-bottom:8px"><span class="alin-sublabel">Centro de Custo</span><input type="text" id="alinCCNovo" class="form-input" placeholder="Ex: Comercial"></div>
+              <div><span class="alin-sublabel">Projeto</span><input type="text" id="alinProjetoNovo" class="form-input" placeholder="Ex: 739"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CAMPOS ADIANTAMENTO -->
+        <div id="alinAdiantSection" class="alin-adiant-section" style="display:none">
+          <div class="alin-adiant-title"><i class="fa-solid fa-money-bill-wave" style="color:#7e22ce"></i> Dados do adiantamento</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div><label class="alin-label">Data</label><input type="text" id="alinAdiantData" class="form-input" placeholder="Ex: 16/06/2026"></div>
+            <div><label class="alin-label">Valor (R$)</label><input type="text" id="alinAdiantValor" class="form-input" placeholder="Ex: 1.500,00"></div>
+          </div>
+          <div style="margin-bottom:12px"><label class="alin-label">Fornecedor</label><input type="text" id="alinAdiantFornecedor" class="form-input" placeholder="Ex: Empresa XYZ Ltda"></div>
+          <div>
+            <label class="alin-label">Unidade</label>
+            <div style="display:flex;gap:16px;margin-top:4px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="alinUnidade" value="Matriz" checked style="accent-color:var(--navy)"> Matriz</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="alinUnidade" value="Filial" style="accent-color:var(--navy)"> Filial</label>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label class="alin-label">Descrição / Observações</label>
+          <textarea id="alinDescricao" class="form-input" rows="3" placeholder="Contexto, decisões, observações..." style="resize:vertical"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div><label class="alin-label">Participantes (separados por vírgula)</label><input type="text" id="alinParticipantes" class="form-input" placeholder="Ex: Vythoria, João, Maria"></div>
+          <div><label class="alin-label">Data de referência</label><input type="text" id="alinDataRef" class="form-input" placeholder="Ex: 10/06/2026"></div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="Alinhamentos.save()">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHE ALINHAMENTO -->
+  <div class="dev-modal-overlay" id="alinDetailOverlay" style="display:none" onclick="if(event.target===this)Alinhamentos.closeDetail()">
+    <div class="dev-modal" style="max-width:620px;width:100%">
+      <div class="dev-modal-header">
+        <span id="alinDetailTitulo" style="font-size:16px"></span>
+        <button onclick="Alinhamentos.closeDetail()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dev-modal-body">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+          <span id="alinDetailBadge" class="alin-badge"></span>
+          <select id="alinDetailStatus" class="form-input" style="width:auto" onchange="Alinhamentos.updateStatus()">
+            <option>Pendente</option><option>Em andamento</option><option>Concluído</option><option>Cancelado</option>
+          </select>
+          <span id="alinDetailData" style="font-size:12px;color:var(--gray-400);margin-left:auto"></span>
+        </div>
+
+        <!-- Tabela lançamento -->
+        <div id="alinDetailLc" style="display:none;margin-bottom:16px">
+          <div class="alin-section-label">Alteração de classificação</div>
+          <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--gray-200)">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="background:var(--navy);color:white">
+                <th style="padding:8px 10px;text-align:left">Campo</th>
+                <th style="padding:8px 10px;text-align:left">Atual</th>
+                <th style="padding:8px 10px;text-align:center;width:30px">→</th>
+                <th style="padding:8px 10px;text-align:left">Novo</th>
+              </tr></thead>
+              <tbody id="alinDetailLcRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cards adiantamento -->
+        <div id="alinDetailAdiant" style="display:none;margin-bottom:16px">
+          <div class="alin-section-label">Dados do adiantamento</div>
+          <div id="alinDetailAdiantCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div class="alin-section-label">Descrição</div>
+          <p id="alinDetailDesc" style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap"></p>
+        </div>
+        <div style="margin-bottom:16px">
+          <div class="alin-section-label">Participantes</div>
+          <div id="alinDetailPartic" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"></div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--gray-100);margin:16px 0">
+        <div class="alin-section-label">Atualizações</div>
+        <div id="alinDetailUpdates" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="alinUpdInput" class="form-input" placeholder="Adicionar atualização..." onkeydown="if(event.key==='Enter')Alinhamentos.addUpdate()">
+          <button class="btn-secondary" onclick="Alinhamentos.addUpdate()">Adicionar</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:16px">
+          <button class="btn-secondary" style="color:var(--red);border-color:var(--red)" onclick="Alinhamentos.deleteEntry()">
+            <i class="fa-solid fa-trash"></i> Excluir
+          </button>
+          <button class="btn-primary" onclick="Alinhamentos.openEditFromDetail()">
+            <i class="fa-solid fa-pen"></i> Editar
+          </button>
+        </div>
       </div>
     </div>
   </div>
