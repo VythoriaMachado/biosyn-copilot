@@ -76,7 +76,7 @@ const App = {
 
     // show/hide workhub tab bar + highlight correct nav item
     const tabBar = $('workhubTabs');
-    const sidebarViews = ['desenvolvimento', 'documentos'];
+    const sidebarViews = ['desenvolvimento', 'documentos', 'alinhamentos'];
     const isDevView = sidebarViews.includes(name);
     if (tabBar) tabBar.style.display = isDevView ? 'none' : 'flex';
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -88,6 +88,8 @@ const App = {
     exportBtn.onclick = name === 'weekly' ? () => Weekly.export() : null;
 
     this.currentView = name;
+    const titles = { documentos:'Documentos', desenvolvimento:'Meu Desenvolvimento', alinhamentos:'Alinhamentos Time' };
+    if (titles[name]) $('viewTitle').textContent = titles[name];
     if (name === 'dashboard')       Dashboard.load();
     if (name === 'checklist')       Checklist.init();
     if (name === 'planning')        Planning.load();
