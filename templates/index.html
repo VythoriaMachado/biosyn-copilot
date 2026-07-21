@@ -663,6 +663,18 @@
           </div>
         </div>
 
+        <!-- CAMPOS ACORDO -->
+        <div id="alinAcordoSection" style="display:none;margin-bottom:14px">
+          <label class="alin-label"><i class="fa-solid fa-paperclip" style="color:var(--sky)"></i> Anexo (foto ou documento)</label>
+          <div id="alinAcordoDropzone" class="alin-dropzone" onclick="$('alinAcordoFile').click()">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size:22px;color:var(--sky);margin-bottom:4px"></i>
+            <div style="font-size:13px;color:#555">Clique para selecionar ou arraste o arquivo aqui</div>
+            <div style="font-size:11px;color:#999;margin-top:2px">JPG, PNG, PDF, Word — máx. 10 MB</div>
+          </div>
+          <input type="file" id="alinAcordoFile" accept="image/*,.pdf,.doc,.docx" style="display:none" onchange="Alinhamentos.onFileChange(this)">
+          <div id="alinAcordoPreview" style="display:none;margin-top:8px"></div>
+        </div>
+
         <!-- CAMPOS ADIANTAMENTO -->
         <div id="alinAdiantSection" class="alin-adiant-section" style="display:none">
           <div class="alin-adiant-title"><i class="fa-solid fa-money-bill-wave" style="color:#7e22ce"></i> Dados do adiantamento</div>
@@ -731,6 +743,11 @@
         <div id="alinDetailAdiant" style="display:none;margin-bottom:16px">
           <div class="alin-section-label">Dados do adiantamento</div>
           <div id="alinDetailAdiantCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
+        </div>
+
+        <!-- Anexo Acordo -->
+        <div id="alinDetailAnexo" style="display:none;margin-bottom:16px">
+          <div class="alin-section-label">Anexo</div>
         </div>
 
         <div style="margin-bottom:16px">

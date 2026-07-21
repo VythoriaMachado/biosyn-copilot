@@ -2390,8 +2390,27 @@ const Alinhamentos = {
   // ── FORM ──
   onTipoChange() {
     const tipo = $('alinTipo').value;
-    $('alinLcSection').style.display     = tipo === 'Lançamento'   ? '' : 'none';
-    $('alinAdiantSection').style.display = tipo === 'Adiantamento' ? '' : 'none';
+    $('alinLcSection').style.display      = tipo === 'Lançamento'   ? '' : 'none';
+    $('alinAdiantSection').style.display  = tipo === 'Adiantamento' ? '' : 'none';
+    $('alinAcordoSection').style.display  = tipo === 'Acordo'       ? '' : 'none';
+  },
+
+  _acordoFile: null,
+
+  onFileChange(input) {
+    const file = input.files[0]; if (!file) return;
+    this._acordoFile = file;
+    const prev = $('alinAcordoPreview');
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      prev.innerHTML = `<img src="${url}" style="max-width:100%;max-height:180px;border-radius:6px;border:1px solid var(--gray-200)">
+        <div style="font-size:12px;color:#555;margin-top:4px">${file.name}</div>`;
+    } else {
+      prev.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200)">
+        <i class="fa-solid fa-file" style="color:var(--sky)"></i>${file.name}</div>`;
+    }
+    prev.style.display = '';
+    $('alinAcordoDropzone').style.borderColor = 'var(--sky)';
   },
 
   _clearForm() {
@@ -2401,6 +2420,11 @@ const Alinhamentos = {
      'alinAdiantData','alinAdiantValor','alinAdiantFornecedor'
     ].forEach(id => { const e=$(id); if(e) e.value=''; });
     document.querySelector('input[name=alinUnidade][value=Matriz]').checked = true;
+    this._acordoFile = null;
+    $('alinAcordoFile').value = '';
+    $('alinAcordoPreview').style.display = 'none';
+    $('alinAcordoPreview').innerHTML = '';
+    $('alinAcordoDropzone').style.borderColor = '';
   },
 
   openNew() {
@@ -2444,6 +2468,19 @@ const Alinhamentos = {
     if (!titulo) { $('alinTitulo').focus(); return; }
     const id   = $('alinEditId').value;
     const tipo = $('alinTipo').value;
+
+    // Upload anexo do Acordo, se houver
+    let acordo_anexo_url = null;
+    if (tipo === 'Acordo' && this._acordoFile) {
+      try {
+        const fd = new FormData();
+        fd.append('file', this._acordoFile);
+        const res = await fetch('/api/alinhamentos/upload-anexo', { method: 'POST', body: fd });
+        const json = await res.json();
+        acordo_anexo_url = json.url || null;
+      } catch(e) { showToast('Erro ao enviar arquivo.', 'error'); return; }
+    }
+
     const payload = {
       titulo, tipo, status: $('alinStatus').value,
       descricao: $('alinDescricao').value.trim(),
@@ -2455,6 +2492,8 @@ const Alinhamentos = {
       adiant_fornecedor: $('alinAdiantFornecedor').value.trim(),
       adiant_unidade: document.querySelector('input[name=alinUnidade]:checked')?.value || 'Matriz',
     };
+    if (acordo_anexo_url) payload.acordo_anexo_url = acordo_anexo_url;
+
     try {
       if (id) {
         const updated = await API(`/api/alinhamentos/${id}`, { method:'PATCH', body: JSON.stringify(payload) });
@@ -2516,6 +2555,20 @@ const Alinhamentos = {
       ).join('');
       $('alinDetailAdiant').style.display = '';
     } else { $('alinDetailAdiant').style.display = 'none'; }
+
+    // Anexo do Acordo
+    const anexoEl = $('alinDetailAnexo');
+    if (anexoEl) {
+      if (e.acordo_anexo_url) {
+        const isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(e.acordo_anexo_url);
+        anexoEl.innerHTML = isImg
+          ? `<a href="${e.acordo_anexo_url}" target="_blank"><img src="${e.acordo_anexo_url}" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--gray-200);cursor:zoom-in"></a>`
+          : `<a href="${e.acordo_anexo_url}" target="_blank" class="alin-anexo-link"><i class="fa-solid fa-file-arrow-down"></i> Baixar anexo</a>`;
+        anexoEl.style.display = '';
+      } else {
+        anexoEl.style.display = 'none';
+      }
+    }
 
     this._renderUpdates(e);
     $('alinUpdInput').value = '';

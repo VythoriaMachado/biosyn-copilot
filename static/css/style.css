@@ -1168,6 +1168,10 @@ body {
 .alin-col-head { font-size:11px;font-weight:700;color:var(--gray-400);text-align:center;margin-bottom:8px; }
 .alin-sublabel { font-size:11px;font-weight:600;color:var(--gray-500);margin-bottom:4px;display:block; }
 .alin-adiant-section { background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:10px;padding:14px;margin-bottom:14px; }
+.alin-dropzone { border:2px dashed var(--sky);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s; }
+.alin-dropzone:hover { background:rgba(9,156,214,.05); }
+.alin-anexo-link { display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:6px;background:var(--navy);color:#fff;font-size:13px;text-decoration:none; }
+.alin-anexo-link:hover { opacity:.85; }
 .alin-adiant-title { font-size:11px;font-weight:700;color:#7e22ce;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px; }
 .alin-label { display:block;font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:4px; }
 .alin-section-label { font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px; }

@@ -550,6 +550,18 @@ def api_delete_alinhamento(aid):
     return jsonify({"success": True})
 
 
+@app.route("/api/alinhamentos/upload-anexo", methods=["POST"])
+def api_upload_anexo_alinhamento():
+    from guias_handler import upload_midia
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "Nenhum arquivo enviado"}), 400
+    url = upload_midia(f)
+    if not url:
+        return jsonify({"error": "Falha no upload"}), 500
+    return jsonify({"url": url})
+
+
 # ── GUIAS (COMO FAZER) ───────────────────────────────────────────────────────
 
 from guias_handler import (
