@@ -6,21 +6,21 @@
 
 const $ = id => document.getElementById(id);
 
-function API(url) {
+function API(url, opts) {
   const profile = UserProfile.get();
-  if (profile) {
+  // Só adiciona params de usuario em requisições GET (sem body)
+  if (profile && (!opts || !opts.method || opts.method === 'GET')) {
     const sep = url.includes('?') ? '&' : '?';
-    // No modo gestor, omite usuario para retornar dados de todos
     const params = AdminMode.active
       ? new URLSearchParams({ ics_url: profile.ics_url })
       : new URLSearchParams({ usuario: profile.name, ics_url: profile.ics_url });
-    // Se gestor filtrou por uma pessoa específica
     if (AdminMode.active && AdminMode.filtroUsuario) {
       params.set('usuario', AdminMode.filtroUsuario);
     }
     url = url + sep + params.toString();
   }
-  return fetch(url).then(r => r.json());
+  const fetchOpts = opts ? { headers: { 'Content-Type': 'application/json' }, ...opts } : undefined;
+  return fetch(url, fetchOpts).then(r => r.json());
 }
 
 function showToast(msg, type = '') {
