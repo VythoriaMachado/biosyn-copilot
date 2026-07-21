@@ -745,11 +745,6 @@
           <div id="alinDetailAdiantCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
         </div>
 
-        <!-- Anexo Acordo -->
-        <div id="alinDetailAnexo" style="display:none;margin-bottom:16px">
-          <div class="alin-section-label">Anexo</div>
-        </div>
-
         <div style="margin-bottom:16px">
           <div class="alin-section-label">Descrição</div>
           <p id="alinDetailDesc" style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap"></p>
@@ -765,6 +760,11 @@
           <input type="text" id="alinUpdInput" class="form-input" placeholder="Adicionar atualização..." onkeydown="if(event.key==='Enter')Alinhamentos.addUpdate()">
           <button class="btn-secondary" onclick="Alinhamentos.addUpdate()">Adicionar</button>
         </div>
+        <!-- Anexo Acordo -->
+        <div id="alinDetailAnexo" style="display:none;margin-bottom:16px">
+          <div class="alin-section-label">Anexo</div>
+        </div>
+
         <div style="display:flex;justify-content:space-between;margin-top:16px">
           <button class="btn-secondary" style="color:var(--red);border-color:var(--red)" onclick="Alinhamentos.deleteEntry()">
             <i class="fa-solid fa-trash"></i> Excluir
