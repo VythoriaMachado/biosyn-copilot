@@ -2795,14 +2795,14 @@ const Documentos = {
 // ── WORKHUB ───────────────────────────────────────────────────────────────
 const WorkHub = {
   open() {
-    // Mark workhub nav active
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const whNav = document.querySelector('.nav-item[data-view="workhub"]');
     if (whNav) whNav.classList.add('active');
     $('viewTitle').textContent = 'WorkHub';
-    // Show last active tab or default to dashboard
+    const validTabs = ['dashboard','checklist','planning','weekly','managerial','insights','biblioteca'];
     const last = localStorage.getItem('workhub_last_tab') || 'dashboard';
-    this.switchTab(last, document.querySelector(`.wh-tab[data-view="${last}"]`));
+    const tab = validTabs.includes(last) ? last : 'dashboard';
+    this.switchTab(tab, document.querySelector(`.wh-tab[data-view="${tab}"]`));
   },
 
   switchTab(name, btn) {
