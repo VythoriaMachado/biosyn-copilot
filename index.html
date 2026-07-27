@@ -309,6 +309,7 @@
   <div class="tab" onclick="switchTab('validar')"><span class="tab-icon">✓</span> Validar Lançamento</div>
   <div class="tab" onclick="switchTab('fornecedores')"><span class="tab-icon">🏢</span> Fornecedores</div>
   <div class="tab" onclick="switchTab('historico')"><span class="tab-icon">📋</span> Histórico</div>
+  <div class="tab" onclick="switchTab('analises')"><span class="tab-icon">🧪</span> Análises Laboratoriais</div>
   <div class="tab" onclick="switchTab('config')"><span class="tab-icon">⚙️</span> Configurar</div>
 </div>
 
@@ -458,6 +459,90 @@
         <div><h2>Histórico de Validações</h2><p>Últimas 30 validações realizadas</p></div>
       </div>
       <div id="hist-validacoes"><div class="empty">Carregando...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB: ANALISES LABORATORIAIS -->
+  <div id="pg-analises" class="page">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🧪</div>
+        <div>
+          <h2>Identificar Categoria e Projeto — Análises Laboratoriais</h2>
+          <p>Informe a descrição da análise e a classe para obter categoria + projeto contábil (reduzido)</p>
+        </div>
+      </div>
+
+      <label>Descrição da Análise (item de NF, nome do exame, serviço)</label>
+      <textarea id="al-descricao" rows="3" placeholder="Ex: CONTAGEM DE BACTÉRIAS LÁTICAS EM RAÇÃO&#10;Ex: ANALISE MICROBIOLOGICA DE PRODUTO ACABADO&#10;Pode colar várias análises — uma por linha"></textarea>
+
+      <div class="form-row" style="margin-top:4px;">
+        <div>
+          <label>Classe do Projeto</label>
+          <select id="al-classe">
+            <option value="">— selecione —</option>
+            <option value="VEN">VEN — Análise prestada a clientes externos</option>
+            <option value="CUSTO">CUSTO — Controle interno / qualidade</option>
+          </select>
+        </div>
+        <div id="al-subtipo-wrap" style="display:none;">
+          <label>Subtipo do Item Analisado <span style="font-weight:400;font-size:0.72rem;">(só CUSTO/Microb./Fís-Quím.)</span></label>
+          <select id="al-subtipo">
+            <option value="">— selecione se souber —</option>
+            <option value="INSUMO">Insumo (matéria-prima)</option>
+            <option value="PRODUTO ACABADO">Produto Acabado</option>
+            <option value="EMBALAGEM">Embalagem</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-group" style="margin-top:18px;">
+        <button class="btn" onclick="classificarAnalise()">🔬 Classificar</button>
+        <button class="btn btn-sec" onclick="limparAnalise()">Limpar</button>
+      </div>
+      <div id="al-resultado" style="margin-top:18px;"></div>
+    </div>
+
+    <!-- Tabela de referência -->
+    <div class="card" style="margin-top:18px;">
+      <div class="card-header">
+        <div class="card-icon">📋</div>
+        <div><h2>Tabela de Projetos — Referência Rápida</h2><p>Projetos analíticos cadastrados por classe</p></div>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;">
+          <div style="font-size:0.73rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;border-bottom:2px solid var(--sky);padding-bottom:4px;">Classe VEN</div>
+          <table style="width:100%;font-size:0.8rem;border-collapse:collapse;">
+            <thead><tr style="background:var(--sky-light);"><th style="padding:5px 8px;text-align:left;">Reduzido</th><th style="padding:5px 8px;text-align:left;">Projeto</th><th style="padding:5px 8px;text-align:left;">Categoria</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">450</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">DIGESTIBILIDADE</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">DIGESTIBILIDADE</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">451</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FISICO QUIMICO</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FÍSICO-QUÍMICO</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">452</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">HISTOPATOLOGICO</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">HISTOPATOLÓGICO</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">453</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">IMUNOLOGICO</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">IMUNOLÓGICO</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">454</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">COMPRA DE MATERIAIS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MATERIAIS</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">629</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLOGICO</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLÓGICO</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">630</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">PRODUTO</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">PRODUTO</td></tr>
+              <tr><td style="padding:4px 8px;">751</td><td style="padding:4px 8px;">RECUPERACAO DE CEPA</td><td style="padding:4px 8px;">PRODUTO (recuperação de cepa)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="flex:1;min-width:260px;">
+          <div style="font-size:0.73rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;border-bottom:2px solid var(--sky);padding-bottom:4px;">Classe CUSTO</div>
+          <table style="width:100%;font-size:0.8rem;border-collapse:collapse;">
+            <thead><tr style="background:var(--sky-light);"><th style="padding:5px 8px;text-align:left;">Reduzido</th><th style="padding:5px 8px;text-align:left;">Projeto</th><th style="padding:5px 8px;text-align:left;">Categoria / Subtipo</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">523</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLOGICOS INSUMOS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLÓGICO / Insumo</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">524</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLOGICOS PRODUTOS ACABADOS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLÓGICO / Produto Acabado</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">688</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLOGICOS EMBALAGENS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">MICROBIOLÓGICO / Embalagem</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">525</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">AGUA</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FÍSICO-QUÍMICO / Água</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">526</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">CONDICIONANTES AMBIENTAIS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FÍSICO-QUÍMICO ou MICROB. / Ambiental</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">887</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FISICO QUIMICO - PRODUTOS ACABADOS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FÍSICO-QUÍMICO / Produto Acabado</td></tr>
+              <tr><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">888</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FISICO QUIMICO - INSUMOS</td><td style="padding:4px 8px;border-bottom:1px solid var(--gray-light);">FÍSICO-QUÍMICO / Insumo</td></tr>
+              <tr><td style="padding:4px 8px;">889</td><td style="padding:4px 8px;">FISICO QUIMICO - EMBALAGEM</td><td style="padding:4px 8px;">FÍSICO-QUÍMICO / Embalagem</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1437,12 +1522,179 @@ async function carregarHistorico() {
 // ============================================================
 function switchTab(tab) {
   document.querySelectorAll(".tab").forEach((t,i) => {
-    t.classList.toggle("active", ["classificar","validar","fornecedores","historico","config"][i] === tab);
+    t.classList.toggle("active", ["classificar","validar","fornecedores","historico","analises","config"][i] === tab);
   });
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById("pg-" + tab).classList.add("active");
   if (tab === "fornecedores" && sbClient) carregarFornecedoresBD();
   if (tab === "historico") carregarHistorico();
+}
+
+// ============================================================
+// CLASSIFICADOR DE ANÁLISES LABORATORIAIS
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const classeEl = document.getElementById('al-classe');
+  if (classeEl) classeEl.addEventListener('change', () => {
+    const st = document.getElementById('al-subtipo-wrap');
+    if (st) st.style.display = classeEl.value === 'CUSTO' ? '' : 'none';
+  });
+});
+
+function normAl(s) { return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+
+const AL_EXACT = {
+  'DIGESTIBILIDADE EM BOVINOS':'DIGESTIBILIDADE',
+  'ANALISE DE AGUA':'FISICO-QUIMICO','DETERMINACAO DE PH':'FISICO-QUIMICO',
+  'UMIDADE E MATERIA SECA':'FISICO-QUIMICO',
+  'ANALISE DE INTESTINO':'HISTOPATOLOGICO','ANALISE HISTOPATOLOGICA':'HISTOPATOLOGICO',
+  'ANALISE HISTOPATOLOGICA DE INTESTINO':'HISTOPATOLOGICO','EXAME HISTOPATOLOGICO':'HISTOPATOLOGICO',
+  'ANALISE IMUNOLOGICA':'IMUNOLOGICO',
+  'COMPRA DE MATERIAIS PARA COLETA DE ANALISE':'MATERIAIS',
+  'ANALISE DE AFLOTOXINAS':'MICROBIOLOGICO','ANALISE DE GRAM':'MICROBIOLOGICO',
+  'ANALISE DE MASTITE':'MICROBIOLOGICO','ANALISE DE URINA DE MATRIZES SUINAS':'MICROBIOLOGICO',
+  'ANTIBIOGRAMA':'MICROBIOLOGICO','BACTERILOGICO DE URINA':'MICROBIOLOGICO',
+  'CONTAGEM E.COLI':'MICROBIOLOGICO','CONTAGEM MICROBIOLOGICA DE PATOGENOS':'MICROBIOLOGICO',
+  'CONTAGEM SALMONELA':'MICROBIOLOGICO','DETECCAO DE ROTAVIRUS TIPO A E C':'MICROBIOLOGICO',
+  'DETERMINACAO DE CLOSTRIDIUM SPP':'MICROBIOLOGICO','DETERMINACAO ENTEROBATERIAS':'MICROBIOLOGICO',
+  'DIAGNOSTICO BACTERIOLOGICOS':'MICROBIOLOGICO','ISOLAMENTO BACTERIANO':'MICROBIOLOGICO',
+  'ISOLAMENTO DE ANAEROBIOS':'MICROBIOLOGICO','MIC':'MICROBIOLOGICO',
+  'NECROPSIA DE SUINOS':'MICROBIOLOGICO','PESQUISA DE BRACHYSPIRA E LAWSONIA':'MICROBIOLOGICO',
+  'PESQUISA DE OOCISTOS':'MICROBIOLOGICO',
+  'TESTE ATIVIDADE ANTIMICROBIANA DE HALO DE INIBICAO':'MICROBIOLOGICO','URINALISE':'MICROBIOLOGICO',
+  'AVALIACAO DE PRODUTO':'PRODUTO','RECUPERACAO BIFIDOBACTERIAS':'PRODUTO',
+  'RECUPERACAO DE BACILOS':'PRODUTO','RECUPERACAO DE BACTERIAS LATICAS':'PRODUTO',
+  'RECUPERACAO DE CEPAS EM RACAO':'PRODUTO','RECUPERACAO DE LEVEDURAS':'PRODUTO','TESTE A CAMPO':'PRODUTO'
+};
+
+const AL_KW_MICROBIO_PATOGENO = ['bacterio','microbiologic','antibiograma','e.coli','salmonela','clostridium','enterobacter','rotavirus','brachyspira','lawsonia','oocisto','necropsia','aflatoxina','halo de inibicao','mic ','mastite','urina','urinalise','isolamento','diagnostico bacteri'];
+const AL_KW_PRODUTO_CEPA = ['recuperacao de','bacterias laticas','bifidobacter','bacillus spp','enterococcus','leveduras em racao','levedura em racao','contagem de bacterias laticas','contagem de bifidobacter','contagem de bacillus','avaliacao de produto','teste a campo'];
+
+function detectarCategoria(desc) {
+  const d = normAl(desc);
+  // exact match
+  for (const [k,v] of Object.entries(AL_EXACT)) {
+    if (normAl(k) === d) return { cat: v, regra: 'correspondência exata' };
+  }
+  // SENAI por cidade
+  if (d.includes('senai')) {
+    if (d.includes('blumenau')) return { cat:'FISICO-QUIMICO', regra:'SENAI Blumenau → análise de água (Físico-Químico)' };
+    if (d.includes('chapeco')) return { cat:'PRODUTO', regra:'SENAI Chapecó → análise de insumo/embalagem (Produto)' };
+  }
+  // PRODUTO cepa probiótica (antes de MICROBIOLOGICO para evitar falso positivo)
+  if (AL_KW_PRODUTO_CEPA.some(kw => d.includes(normAl(kw)))) return { cat:'PRODUTO', regra:'cepa probiótica/funcional → PRODUTO (não patógeno)' };
+  // keywords
+  if (d.includes('digestibilidade')) return { cat:'DIGESTIBILIDADE', regra:'palavra-chave: digestibilidade' };
+  if (d.includes('agua') || d.includes('ph') || d.includes('umidade') || d.includes('materia seca') || d.includes('fisico-quimic') || d.includes('fisico quimic')) return { cat:'FISICO-QUIMICO', regra:'palavra-chave: físico-químico' };
+  if (d.includes('ambiental') || d.includes('swab') || d.includes('superficie') || d.includes('ar condiciona') || d.includes('condicionante')) return { cat:'AMBIENTAL', regra:'monitoramento ambiental → projeto 526' };
+  if (d.includes('histopatolog') || (d.includes('intestino') && !d.includes('microbiolog'))) return { cat:'HISTOPATOLOGICO', regra:'palavra-chave: histopatológico/intestino' };
+  if (d.includes('imunolog')) return { cat:'IMUNOLOGICO', regra:'palavra-chave: imunológico' };
+  if (d.includes('compra de material') || d.includes('material para coleta')) return { cat:'MATERIAIS', regra:'palavra-chave: compra de materiais' };
+  if (AL_KW_MICROBIO_PATOGENO.some(kw => d.includes(normAl(kw)))) return { cat:'MICROBIOLOGICO', regra:'palavra-chave patógeno/microbiologia clínica' };
+  if (d.includes('microbiolog')) return { cat:'MICROBIOLOGICO', regra:'palavra-chave: microbiológico' };
+  return { cat:'INDEFINIDO', regra:'nenhuma regra aplicável — revisar manualmente' };
+}
+
+function resolverProjeto(cat, classe, subtipo) {
+  if (classe === 'VEN') {
+    const mVEN = { 'DIGESTIBILIDADE':'450 — DIGESTIBILIDADE','FISICO-QUIMICO':'451 — FISICO QUIMICO',
+      'HISTOPATOLOGICO':'452 — HISTOPATOLOGICO','IMUNOLOGICO':'453 — IMUNOLOGICO',
+      'MATERIAIS':'454 — COMPRA DE MATERIAIS','MICROBIOLOGICO':'629 — MICROBIOLOGICO',
+      'PRODUTO':'630 — PRODUTO' };
+    // subtipo cepa → 751
+    if (cat === 'PRODUTO') {
+      const d2 = normAl(subtipo||'');
+      if (d2.includes('cepa') || d2.includes('recupera')) return '751 — RECUPERACAO DE CEPA';
+    }
+    return mVEN[cat] || 'A CONFIRMAR';
+  }
+  if (classe === 'CUSTO') {
+    if (cat === 'AMBIENTAL') return '526 — CONDICIONANTES AMBIENTAIS';
+    if (cat === 'FISICO-QUIMICO') {
+      if (!subtipo) return 'A CONFIRMAR (informe subtipo: Insumo / Produto Acabado / Embalagem)';
+      if (subtipo === 'INSUMO') return '888 — FISICO QUIMICO - INSUMOS';
+      if (subtipo === 'PRODUTO ACABADO') return '887 — FISICO QUIMICO - PRODUTOS ACABADOS';
+      if (subtipo === 'EMBALAGEM') return '889 — FISICO QUIMICO - EMBALAGEM';
+    }
+    if (cat === 'MICROBIOLOGICO') {
+      if (!subtipo) return 'A CONFIRMAR (informe subtipo: Insumo / Produto Acabado / Embalagem)';
+      if (subtipo === 'INSUMO') return '523 — MICROBIOLOGICOS INSUMOS';
+      if (subtipo === 'PRODUTO ACABADO') return '524 — MICROBIOLOGICOS PRODUTOS ACABADOS';
+      if (subtipo === 'EMBALAGEM') return '688 — MICROBIOLOGICOS EMBALAGENS';
+    }
+    if (cat === 'FISICO-QUIMICO' && normAl(subtipo||'').includes('agua')) return '525 — AGUA';
+    return 'A CONFIRMAR (sem reduzido cadastrado para esta categoria em CUSTO)';
+  }
+  return 'A CONFIRMAR';
+}
+
+function badgeCor(cat) {
+  const m = {'DIGESTIBILIDADE':'#6a3fa0','FISICO-QUIMICO':'#0077b6','HISTOPATOLOGICO':'#e85d04','IMUNOLOGICO':'#2d6a4f','MATERIAIS':'#7b6200','MICROBIOLOGICO':'#b5179e','PRODUTO':'#023e8a','AMBIENTAL':'#457b9d','INDEFINIDO':'#888'};
+  return m[cat] || '#002468';
+}
+
+function classificarAnalise() {
+  const raw = (document.getElementById('al-descricao').value || '').trim();
+  const classe = document.getElementById('al-classe').value;
+  const subtipo = document.getElementById('al-subtipo').value;
+  const res = document.getElementById('al-resultado');
+  if (!raw) { res.innerHTML = '<div class="warn">⚠️ Informe ao menos uma descrição.</div>'; return; }
+  if (!classe) { res.innerHTML = '<div class="warn">⚠️ Selecione a classe do projeto (VEN ou CUSTO).</div>'; return; }
+
+  const linhas = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+
+  if (linhas.length === 1) {
+    const { cat, regra } = detectarCategoria(linhas[0]);
+    // check if PRODUTO and description suggests cepa
+    const dCepa = normAl(linhas[0]);
+    const isCepa = cat === 'PRODUTO' && AL_KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
+    const proj = resolverProjeto(cat === 'PRODUTO' && isCepa ? 'PRODUTO' : cat, classe, isCepa ? 'cepa' : subtipo);
+    const cor = badgeCor(cat);
+    res.innerHTML = `
+      <div style="background:var(--sky-light);border:1px solid var(--sky-mid);border-radius:10px;padding:16px 20px;">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Resultado da Classificação</div>
+        <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Descrição:</span><strong>${linhas[0]}</strong></div>
+        <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Classe:</span><span style="background:var(--navy);color:#fff;border-radius:4px;padding:2px 8px;font-size:0.78rem;">${classe}</span></div>
+        <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Categoria:</span><span style="background:${cor};color:#fff;border-radius:4px;padding:2px 10px;font-size:0.82rem;font-weight:700;">${cat}</span></div>
+        ${subtipo && classe==='CUSTO'?`<div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Subtipo:</span><strong>${subtipo}</strong></div>`:''}
+        <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Projeto (reduzido):</span><span style="background:var(--sky);color:#fff;border-radius:4px;padding:2px 10px;font-size:0.82rem;font-weight:700;">${proj}</span></div>
+        <div style="margin-top:10px;font-size:0.76rem;color:#555;">💡 <em>${regra}</em></div>
+      </div>`;
+  } else {
+    // múltiplas linhas → tabela
+    let rows = '';
+    linhas.forEach(l => {
+      const { cat, regra } = detectarCategoria(l);
+      const dCepa = normAl(l);
+      const isCepa = cat === 'PRODUTO' && AL_KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
+      const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipo);
+      const cor = badgeCor(cat);
+      rows += `<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.79rem;">${l}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);"><span style="background:${cor};color:#fff;border-radius:4px;padding:1px 7px;font-size:0.75rem;font-weight:700;white-space:nowrap;">${cat}</span></td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.79rem;white-space:nowrap;">${proj}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.72rem;color:#666;">${regra}</td>
+      </tr>`;
+    });
+    res.innerHTML = `<div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+        <thead><tr style="background:var(--sky-light);">
+          <th style="padding:6px 8px;text-align:left;color:var(--navy);">Descrição</th>
+          <th style="padding:6px 8px;text-align:left;color:var(--navy);">Categoria</th>
+          <th style="padding:6px 8px;text-align:left;color:var(--navy);">Projeto (reduzido)</th>
+          <th style="padding:6px 8px;text-align:left;color:var(--navy);">Justificativa</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }
+}
+
+function limparAnalise() {
+  document.getElementById('al-descricao').value = '';
+  document.getElementById('al-classe').value = '';
+  document.getElementById('al-subtipo').value = '';
+  document.getElementById('al-subtipo-wrap').style.display = 'none';
+  document.getElementById('al-resultado').innerHTML = '';
 }
 
 function limpar(tab) {
