@@ -1542,57 +1542,161 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function normAl(s) { return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+function inclui(d, termos) { return termos.some(t => d.includes(normAl(t))); }
 
-const AL_EXACT = {
-  'DIGESTIBILIDADE EM BOVINOS':'DIGESTIBILIDADE',
-  'ANALISE DE AGUA':'FISICO-QUIMICO','DETERMINACAO DE PH':'FISICO-QUIMICO',
-  'UMIDADE E MATERIA SECA':'FISICO-QUIMICO',
-  'ANALISE DE INTESTINO':'HISTOPATOLOGICO','ANALISE HISTOPATOLOGICA':'HISTOPATOLOGICO',
-  'ANALISE HISTOPATOLOGICA DE INTESTINO':'HISTOPATOLOGICO','EXAME HISTOPATOLOGICO':'HISTOPATOLOGICO',
-  'ANALISE IMUNOLOGICA':'IMUNOLOGICO',
-  'COMPRA DE MATERIAIS PARA COLETA DE ANALISE':'MATERIAIS',
-  'ANALISE DE AFLOTOXINAS':'MICROBIOLOGICO','ANALISE DE GRAM':'MICROBIOLOGICO',
-  'ANALISE DE MASTITE':'MICROBIOLOGICO','ANALISE DE URINA DE MATRIZES SUINAS':'MICROBIOLOGICO',
-  'ANTIBIOGRAMA':'MICROBIOLOGICO','BACTERILOGICO DE URINA':'MICROBIOLOGICO',
-  'CONTAGEM E.COLI':'MICROBIOLOGICO','CONTAGEM MICROBIOLOGICA DE PATOGENOS':'MICROBIOLOGICO',
-  'CONTAGEM SALMONELA':'MICROBIOLOGICO','DETECCAO DE ROTAVIRUS TIPO A E C':'MICROBIOLOGICO',
-  'DETERMINACAO DE CLOSTRIDIUM SPP':'MICROBIOLOGICO','DETERMINACAO ENTEROBATERIAS':'MICROBIOLOGICO',
-  'DIAGNOSTICO BACTERIOLOGICOS':'MICROBIOLOGICO','ISOLAMENTO BACTERIANO':'MICROBIOLOGICO',
-  'ISOLAMENTO DE ANAEROBIOS':'MICROBIOLOGICO','MIC':'MICROBIOLOGICO',
-  'NECROPSIA DE SUINOS':'MICROBIOLOGICO','PESQUISA DE BRACHYSPIRA E LAWSONIA':'MICROBIOLOGICO',
-  'PESQUISA DE OOCISTOS':'MICROBIOLOGICO',
-  'TESTE ATIVIDADE ANTIMICROBIANA DE HALO DE INIBICAO':'MICROBIOLOGICO','URINALISE':'MICROBIOLOGICO',
-  'AVALIACAO DE PRODUTO':'PRODUTO','RECUPERACAO BIFIDOBACTERIAS':'PRODUTO',
-  'RECUPERACAO DE BACILOS':'PRODUTO','RECUPERACAO DE BACTERIAS LATICAS':'PRODUTO',
-  'RECUPERACAO DE CEPAS EM RACAO':'PRODUTO','RECUPERACAO DE LEVEDURAS':'PRODUTO','TESTE A CAMPO':'PRODUTO'
-};
+// ── Palavras-chave por categoria (normalizadas internamente via inclui()) ──────
 
-const AL_KW_MICROBIO_PATOGENO = ['bacterio','microbiologic','antibiograma','e.coli','salmonela','clostridium','enterobacter','rotavirus','brachyspira','lawsonia','oocisto','necropsia','aflatoxina','halo de inibicao','mic ','mastite','urina','urinalise','isolamento','diagnostico bacteri'];
-const AL_KW_PRODUTO_CEPA = ['recuperacao de','bacterias laticas','bifidobacter','bacillus spp','enterococcus','leveduras em racao','levedura em racao','contagem de bacterias laticas','contagem de bifidobacter','contagem de bacillus','avaliacao de produto','teste a campo'];
+const KW_DIGESTIBILIDADE = [
+  'digestibilidade','digestividade','digestivel','digestao','divms','divmo',
+  'coeficiente de digestibilidade','ensaio de digestibilidade','digestibilidade in vitro',
+  'digestibilidade aparente','digestibilidade real','digestibilidade verdadeira'
+];
+
+const KW_FISICO_QUIMICO = [
+  // métodos gerais
+  'fisico-quimic','fisico quimic','bromatolog','analise proximal','analise nutricional',
+  'composicao quimica','composicao centesimal','analise quimica','analise de composicao',
+  'analise bromatologica','hplc','cromatografi','espectrofotometr','espectroscopi',
+  'titulacao','titulometri','refratometr','colorimetri','cielab','karl fischer',
+  'doseamento','dosagem','quantificacao','teor de','concentracao de','determinacao de',
+  'percentual de','percentagem de',
+  // parâmetros de composição
+  'proteina','nitrogeni','kjeldahl','pb ','- pb','extrato etereo','ee ','- ee',
+  'gordura bruta','lipidio','lipideo','lipid','fibra bruta','fdn','fda','fb ',
+  'cinzas','materia mineral','residuo mineral','enn ','energia bruta','eb ',
+  'energia digestivel','ed ','energia metabolizavel','em ','materia seca','ms ',
+  '- ms','umidade','base seca','base umida','ph','acidez','acido graxo',
+  'indice de acidez','indice de peroxido','peroxido',
+  // minerais e vitaminas
+  'calcio','fosforo','potassio','sodio','magnesio','ferro','zinco','cobre','manganes',
+  'selenio','iodo','cobalto','cromo','molibdenio','minerai','macro mineral','micro mineral',
+  'vitamina','retinol','tocoferol','colecalciferol','tiamina','riboflavina','niacina',
+  'piridoxina','cobalamina','acido folico','biotina','acido pantotenico',
+  // aminoácidos
+  'aminoacido','lisina','metionina','triptofano','treonina','valina','leucina',
+  'isoleucina','fenilalanina','histidina','arginina','glicina','prolina','serina',
+  // prebióticos / compostos bioativos
+  'betaglucana','beta glucana','beta-glucana','glucana','mananoligossacarideo','mos ',
+  'fos ','gos ','inulina','oligossacarideo','oligofrutose','prebiotico',
+  // outros parâmetros físicos
+  'granulometria','tamanho de particula','densidade','densidade aparente',
+  'viscosidade','fluidez','solubilidade','atividade de agua','aw ','atividade de ag',
+  'cor ','leitura de cor','analise de cor','turbidez','absorbancia','transmitancia',
+  'condutividade','osmolalidade','pressao osmotica','indice de refracao',
+  // agua especificamente
+  'analise de agua','analise microbiologica de agua',
+  // ensaios físicos
+  'dureza','friabilidade','desintegracao','dissolucao','dispersibilidade',
+  'higroscopicidade','compressibilidade','angulo de repouso'
+];
+
+const KW_HISTOPATOLOGICO = [
+  'histopatolog','histologi','exame de tecido','analise de tecido','biopsia',
+  'corte histolog','lamina histolog','morfometria','vilosidade','vilo intestin',
+  'cripta','submucosa','mucosa intestin','hematoxilina','eosina','h&e',
+  'analise de intestino','exame de intestino','intestino delgado','jejuno','ileo','duodeno'
+];
+
+const KW_IMUNOLOGICO = [
+  'imunolog','elisa','sorolog','anticorpo','titulo de anticorpo','titulacao de anticorpo',
+  'imunofluorescen','western blot','soroneutralizacao','snap test','imunoensaio',
+  'igg','igm','iga','aglutinacao','hemaglutinacao','inibicao de hemaglutinacao',
+  'teste de neutralizacao','soroconversao','titer','soro neutralizacao','imunodifusao'
+];
+
+const KW_MATERIAIS = [
+  'compra de material','material para coleta','material de coleta',
+  'kit de coleta','tubo para coleta','frasco para amostra','swab para coleta',
+  'material laboratorial','suprimento laboratorial'
+];
+
+const KW_AMBIENTAL = [
+  'condicionante ambiental','monitoramento ambiental','ambiental de fabrica',
+  'swab de bancada','swab de superficie','swab de equipamento','superficie de contato',
+  'ar condicionado','qualidade do ar','controle ambiental','monitoramento de ar',
+  'particulas no ar','contagem de particulas ambientais'
+];
+
+// Patógenos/microbiologia clínica → MICROBIOLOGICO
+const KW_MICROBIOLOGICO = [
+  'microbiolog','bacteriolog','antibiograma','mic ','concentracao inibitoria',
+  'gram ','coloracao de gram','bacterioscopia',
+  'e.coli','escherichia coli','coliformes','coliforme termotolerante','coliforme total',
+  'salmonela','salmonella','listeria','staphylococcus','staph ','s.aureus',
+  'clostridium','clostridi','enterobacter','enterobacteria',
+  'campylobacter','yersinia','klebsiella','pseudomonas','brucella',
+  'rotavirus','parvovirus','circovirus','coronavirus','virus enterico',
+  'brachyspira','lawsonia','treponema','serpulina',
+  'oocisto','eimeria','isospora','coccidi',
+  'aflatoxina','micotoxina','fumonisin','zearalenona','ocratoxina','deoxinivalenol','don ',
+  'necropsia','diagnostico anatomopatolog','diagnostico histopatolog de suino',
+  'urina','urinalise','eas ','exame de urina','urina de matriz','bacteriologico de urina',
+  'mastite','celulas somaticas','ccs ','contagem de celulas somaticas',
+  'halo de inibicao','atividade antimicrobiana','atividade antibacteriana',
+  'isolamento bacteriano','isolamento de anaerobio','isolamento fungico',
+  'diagnostico bacteriolog','pesquisa de brachyspira','pesquisa de lawsonia',
+  'pesquisa de salmonela','pesquisa de listeria','pesquisa de e.coli',
+  'contagem total','mesofilo','aerobio mesofilo','bolores e leveduras contaminante',
+  'fungos contaminantes','mofos','deteccao de rotavirus','pcr de patogeno',
+  'pcr salmonela','pcr listeria','sorotipagem','sorotipagem de salmonela'
+];
+
+// Cepas probióticas/funcionais → PRODUTO
+const KW_PRODUTO_CEPA = [
+  'recuperacao de cepa','recuperacao de bacteri','recuperacao de bifidobacter',
+  'recuperacao de bacillus','recuperacao de levedura','recuperacao de enterococcus',
+  'recuperacao de lacto','recuperacao de lactobacillus','recuperacao de pediococcus',
+  'recuperacao de saccharomyces','recuperacao bifidobacter','recuperacao de bacilos',
+  'bacterias laticas em racao','bacterias laticas em produto','bacterias laticas em amostra',
+  'bifidobacter em racao','bifidobacter em produto',
+  'bacillus spp','bacillus subtilis','bacillus licheniformis','bacillus coagulans',
+  'bacillus amyloliquefaciens','contagem de bacillus termorresist',
+  'lacticaseibacillus','lactobacillus','lactococcus','pediococcus',
+  'enterococcus faecium','enterococcus faecalis','enterococcus em racao',
+  'saccharomyces cerevisiae','saccharomyces boulardii','contagem de levedura probiotica',
+  'contagem de bacterias laticas','contagem de bifidobacter',
+  'contagem de lactobacillus','contagem de lacticaseibacillus',
+  'contagem de enterococcus','contagem de bacillus spp',
+  'avaliacao de produto','viabilidade de cepa','viabilidade de probiotico',
+  'eficacia de probiotico','eficiencia de probiotico',
+  'teste a campo','ufc/g de probiotico','ufc g de probiotico',
+  'contagem de probiotico','sobrevivencia de cepa','sobrevivencia de probiotico'
+];
 
 function detectarCategoria(desc) {
   const d = normAl(desc);
-  // exact match
-  for (const [k,v] of Object.entries(AL_EXACT)) {
-    if (normAl(k) === d) return { cat: v, regra: 'correspondência exata' };
-  }
-  // SENAI por cidade
+
+  // 1. SENAI por cidade (prioridade sobre keywords)
   if (d.includes('senai')) {
     if (d.includes('blumenau')) return { cat:'FISICO-QUIMICO', regra:'SENAI Blumenau → análise de água (Físico-Químico)' };
-    if (d.includes('chapeco')) return { cat:'PRODUTO', regra:'SENAI Chapecó → análise de insumo/embalagem (Produto)' };
+    if (d.includes('chapeco'))  return { cat:'PRODUTO', regra:'SENAI Chapecó → análise de insumo/embalagem (Produto)' };
   }
-  // PRODUTO cepa probiótica (antes de MICROBIOLOGICO para evitar falso positivo)
-  if (AL_KW_PRODUTO_CEPA.some(kw => d.includes(normAl(kw)))) return { cat:'PRODUTO', regra:'cepa probiótica/funcional → PRODUTO (não patógeno)' };
-  // keywords
-  if (d.includes('digestibilidade')) return { cat:'DIGESTIBILIDADE', regra:'palavra-chave: digestibilidade' };
-  if (d.includes('agua') || d.includes('ph') || d.includes('umidade') || d.includes('materia seca') || d.includes('fisico-quimic') || d.includes('fisico quimic') || d.includes('doseamento') || d.includes('dosagem') || d.includes('determinacao de') || d.includes('quantificacao') || d.includes('titulacao') || d.includes('proteina') || d.includes('lipidio') || d.includes('gordura') || d.includes('cinzas') || d.includes('fibra') || d.includes('calcio') || d.includes('fosforo') || d.includes('minerai') || d.includes('densidade') || d.includes('viscosidade') || d.includes('solubilidade') || d.includes('granulometria') || d.includes('atividade de agua') || d.includes('aw ') || d.includes('base seca') || d.includes('base umida')) return { cat:'FISICO-QUIMICO', regra:'palavra-chave: físico-químico (doseamento/quantificação/composição)' };
-  if (d.includes('ambiental') || d.includes('swab') || d.includes('superficie') || d.includes('ar condiciona') || d.includes('condicionante')) return { cat:'AMBIENTAL', regra:'monitoramento ambiental → projeto 526' };
-  if (d.includes('histopatolog') || (d.includes('intestino') && !d.includes('microbiolog'))) return { cat:'HISTOPATOLOGICO', regra:'palavra-chave: histopatológico/intestino' };
-  if (d.includes('imunolog')) return { cat:'IMUNOLOGICO', regra:'palavra-chave: imunológico' };
-  if (d.includes('compra de material') || d.includes('material para coleta')) return { cat:'MATERIAIS', regra:'palavra-chave: compra de materiais' };
-  if (AL_KW_MICROBIO_PATOGENO.some(kw => d.includes(normAl(kw)))) return { cat:'MICROBIOLOGICO', regra:'palavra-chave patógeno/microbiologia clínica' };
-  if (d.includes('microbiolog')) return { cat:'MICROBIOLOGICO', regra:'palavra-chave: microbiológico' };
-  return { cat:'INDEFINIDO', regra:'nenhuma regra aplicável — revisar manualmente' };
+
+  // 2. PRODUTO — cepas probióticas (antes de MICROBIOLOGICO)
+  if (inclui(d, KW_PRODUTO_CEPA)) return { cat:'PRODUTO', regra:'cepa probiótica/funcional → PRODUTO' };
+
+  // 3. DIGESTIBILIDADE
+  if (inclui(d, KW_DIGESTIBILIDADE)) return { cat:'DIGESTIBILIDADE', regra:'palavra-chave: digestibilidade' };
+
+  // 4. HISTOPATOLÓGICO
+  if (inclui(d, KW_HISTOPATOLOGICO)) return { cat:'HISTOPATOLOGICO', regra:'palavra-chave: histopatológico/tecido' };
+
+  // 5. IMUNOLÓGICO
+  if (inclui(d, KW_IMUNOLOGICO)) return { cat:'IMUNOLOGICO', regra:'palavra-chave: imunológico/sorologia/ELISA' };
+
+  // 6. MATERIAIS
+  if (inclui(d, KW_MATERIAIS)) return { cat:'MATERIAIS', regra:'palavra-chave: compra de materiais para coleta' };
+
+  // 7. AMBIENTAL (monitoramento de ambiente fabril → projeto 526)
+  if (inclui(d, KW_AMBIENTAL)) return { cat:'AMBIENTAL', regra:'monitoramento ambiental → projeto 526' };
+
+  // 8. MICROBIOLÓGICO (patógenos / microbiologia clínica)
+  if (inclui(d, KW_MICROBIOLOGICO)) return { cat:'MICROBIOLOGICO', regra:'palavra-chave: patógeno/microbiologia clínica' };
+
+  // 9. FÍSICO-QUÍMICO (composição, quantificação, bromatologia)
+  if (inclui(d, KW_FISICO_QUIMICO)) return { cat:'FISICO-QUIMICO', regra:'palavra-chave: físico-químico/bromatologia/composição' };
+
+  return { cat:'INDEFINIDO', regra:'nenhuma regra aplicável — informe mais detalhes ou revise manualmente' };
 }
 
 function detectarSubtipoAuto(desc) {
