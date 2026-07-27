@@ -485,15 +485,6 @@
             <option value="CUSTO">CUSTO — Controle interno / qualidade</option>
           </select>
         </div>
-        <div id="al-subtipo-wrap" style="display:none;">
-          <label>Subtipo do Item Analisado <span style="font-weight:400;font-size:0.72rem;">(só CUSTO/Microb./Fís-Quím.)</span></label>
-          <select id="al-subtipo">
-            <option value="">— selecione se souber —</option>
-            <option value="INSUMO">Insumo (matéria-prima)</option>
-            <option value="PRODUTO ACABADO">Produto Acabado</option>
-            <option value="EMBALAGEM">Embalagem</option>
-          </select>
-        </div>
       </div>
 
       <div class="btn-group" style="margin-top:18px;">
@@ -1533,13 +1524,6 @@ function switchTab(tab) {
 // ============================================================
 // CLASSIFICADOR DE ANÁLISES LABORATORIAIS
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-  const classeEl = document.getElementById('al-classe');
-  if (classeEl) classeEl.addEventListener('change', () => {
-    const st = document.getElementById('al-subtipo-wrap');
-    if (st) st.style.display = classeEl.value === 'CUSTO' ? '' : 'none';
-  });
-});
 
 function normAl(s) { return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
 function inclui(d, termos) { return termos.some(t => d.includes(normAl(t))); }
@@ -1701,9 +1685,15 @@ function detectarCategoria(desc) {
 
 function detectarSubtipoAuto(desc) {
   const d = normAl(desc);
-  if (d.includes('materia prima') || d.includes('insumo') || d.includes('mp ') || d.includes('- mp') || d.includes('base seca') || d.includes('base umida')) return 'INSUMO';
-  if (d.includes('produto acabado') || d.includes('pa ') || d.includes('- pa') || d.includes('produto final') || d.includes('racao') || d.includes('formulacao')) return 'PRODUTO ACABADO';
-  if (d.includes('embalagem') || d.includes('sacaria') || d.includes('filme') || d.includes('rotulo') || d.includes('frasco')) return 'EMBALAGEM';
+  // EMBALAGEM — termos mais específicos, verificar antes de insumo/produto
+  const kwEmb = ['embalagem','sacaria','saco de','saco kraft','filme plastico','rotulo','frasco','pote','bisnaga','bag ','big bag','caixa de papelao','caixa cartonada','tampa','lacre','garrafa','ampola','blister','strip'];
+  if (kwEmb.some(k => d.includes(normAl(k)))) return 'EMBALAGEM';
+  // PRODUTO ACABADO
+  const kwPA = ['produto acabado','produto final','pa ','- pa','racao','formulacao','mistura pronta','ração','produto biosyn','produto acabado','premix acabado','suplemento acabado','nucleo acabado','concentrado acabado','farinha acabada'];
+  if (kwPA.some(k => d.includes(normAl(k)))) return 'PRODUTO ACABADO';
+  // INSUMO / MATÉRIA-PRIMA
+  const kwMP = ['materia prima','insumo','mp ','- mp','base seca','base umida','minerio','minerio','ingrediente','vitamina pre-mix','vitamina premix','aditivo','enzima ','aminoacido ','lisina ','metionina ','treonina ','fosfato ','carbonato ','calcario ','sal grosso','cloreto de sodio','soja ','milho ','farelo ','farinha de peixe','farinha de carne','farinha de osso','fosfato bicalcico','propionato','probiotico em po','levedura em po','gluten','amido','dextrose','sacarose','lactose','caseina'];
+  if (kwMP.some(k => d.includes(normAl(k)))) return 'INSUMO';
   return null;
 }
 
@@ -1824,7 +1814,6 @@ function badgeCor(cat) {
 function classificarAnalise() {
   const raw = (document.getElementById('al-descricao').value || '').trim();
   const classe = document.getElementById('al-classe').value;
-  const subtipo = document.getElementById('al-subtipo').value;
   const res = document.getElementById('al-resultado');
   if (!raw) { res.innerHTML = '<div class="warn">⚠️ Informe ao menos uma descrição.</div>'; return; }
   if (!classe) { res.innerHTML = '<div class="warn">⚠️ Selecione a classe do projeto (VEN ou CUSTO).</div>'; return; }
@@ -1836,8 +1825,8 @@ function classificarAnalise() {
     if (cat === 'INDEFINIDO') { res.innerHTML = renderIndefinido(linhas[0], classe); return; }
     const dCepa = normAl(linhas[0]);
     const isCepa = cat === 'PRODUTO' && KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
-    const subtipoFinal = subtipo || (classe === 'CUSTO' ? detectarSubtipoAuto(linhas[0]) : null);
-    const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
+    const subtipoAuto = classe === 'CUSTO' ? detectarSubtipoAuto(linhas[0]) : null;
+    const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoAuto);
     const cor = badgeCor(cat);
     res.innerHTML = `
       <div style="background:var(--sky-light);border:1px solid var(--sky-mid);border-radius:10px;padding:16px 20px;">
@@ -1845,7 +1834,7 @@ function classificarAnalise() {
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Descrição:</span><strong>${linhas[0]}</strong></div>
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Classe:</span><span style="background:var(--navy);color:#fff;border-radius:4px;padding:2px 8px;font-size:0.78rem;">${classe}</span></div>
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Categoria:</span><span style="background:${cor};color:#fff;border-radius:4px;padding:2px 10px;font-size:0.82rem;font-weight:700;">${cat}</span></div>
-        ${subtipoFinal && classe==='CUSTO'?`<div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Subtipo:</span><strong>${subtipoFinal}</strong></div>`:''}
+        ${subtipoAuto && classe==='CUSTO' ? `<div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Subtipo detectado:</span><strong>${subtipoAuto}</strong></div>` : ''}
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Projeto (reduzido):</span><span style="background:var(--sky);color:#fff;border-radius:4px;padding:2px 10px;font-size:0.82rem;font-weight:700;">${proj}</span></div>
         <div style="margin-top:10px;font-size:0.76rem;color:#555;">💡 <em>${regra}</em></div>
       </div>`;
@@ -1856,8 +1845,8 @@ function classificarAnalise() {
       const { cat, regra } = detectarCategoria(l);
       const dCepa = normAl(l);
       const isCepa = cat === 'PRODUTO' && KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
-      const subtipoFinal = subtipo || (classe === 'CUSTO' ? detectarSubtipoAuto(l) : null);
-      const proj = cat === 'INDEFINIDO' ? '—' : resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
+      const subtipoAuto = classe === 'CUSTO' ? detectarSubtipoAuto(l) : null;
+      const proj = cat === 'INDEFINIDO' ? '—' : resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoAuto);
       const cor = badgeCor(cat);
       const { melhor } = cat === 'INDEFINIDO' ? pontuarSimilaridade(l) : { melhor: null };
       const projetoCell = cat === 'INDEFINIDO'
@@ -1886,8 +1875,6 @@ function classificarAnalise() {
 function limparAnalise() {
   document.getElementById('al-descricao').value = '';
   document.getElementById('al-classe').value = '';
-  document.getElementById('al-subtipo').value = '';
-  document.getElementById('al-subtipo-wrap').style.display = 'none';
   document.getElementById('al-resultado').innerHTML = '';
 }
 
