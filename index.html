@@ -1585,7 +1585,7 @@ function detectarCategoria(desc) {
   if (AL_KW_PRODUTO_CEPA.some(kw => d.includes(normAl(kw)))) return { cat:'PRODUTO', regra:'cepa probiótica/funcional → PRODUTO (não patógeno)' };
   // keywords
   if (d.includes('digestibilidade')) return { cat:'DIGESTIBILIDADE', regra:'palavra-chave: digestibilidade' };
-  if (d.includes('agua') || d.includes('ph') || d.includes('umidade') || d.includes('materia seca') || d.includes('fisico-quimic') || d.includes('fisico quimic')) return { cat:'FISICO-QUIMICO', regra:'palavra-chave: físico-químico' };
+  if (d.includes('agua') || d.includes('ph') || d.includes('umidade') || d.includes('materia seca') || d.includes('fisico-quimic') || d.includes('fisico quimic') || d.includes('doseamento') || d.includes('dosagem') || d.includes('determinacao de') || d.includes('quantificacao') || d.includes('titulacao') || d.includes('proteina') || d.includes('lipidio') || d.includes('gordura') || d.includes('cinzas') || d.includes('fibra') || d.includes('calcio') || d.includes('fosforo') || d.includes('minerai') || d.includes('densidade') || d.includes('viscosidade') || d.includes('solubilidade') || d.includes('granulometria') || d.includes('atividade de agua') || d.includes('aw ') || d.includes('base seca') || d.includes('base umida')) return { cat:'FISICO-QUIMICO', regra:'palavra-chave: físico-químico (doseamento/quantificação/composição)' };
   if (d.includes('ambiental') || d.includes('swab') || d.includes('superficie') || d.includes('ar condiciona') || d.includes('condicionante')) return { cat:'AMBIENTAL', regra:'monitoramento ambiental → projeto 526' };
   if (d.includes('histopatolog') || (d.includes('intestino') && !d.includes('microbiolog'))) return { cat:'HISTOPATOLOGICO', regra:'palavra-chave: histopatológico/intestino' };
   if (d.includes('imunolog')) return { cat:'IMUNOLOGICO', regra:'palavra-chave: imunológico' };
@@ -1593,6 +1593,14 @@ function detectarCategoria(desc) {
   if (AL_KW_MICROBIO_PATOGENO.some(kw => d.includes(normAl(kw)))) return { cat:'MICROBIOLOGICO', regra:'palavra-chave patógeno/microbiologia clínica' };
   if (d.includes('microbiolog')) return { cat:'MICROBIOLOGICO', regra:'palavra-chave: microbiológico' };
   return { cat:'INDEFINIDO', regra:'nenhuma regra aplicável — revisar manualmente' };
+}
+
+function detectarSubtipoAuto(desc) {
+  const d = normAl(desc);
+  if (d.includes('materia prima') || d.includes('insumo') || d.includes('mp ') || d.includes('- mp') || d.includes('base seca') || d.includes('base umida')) return 'INSUMO';
+  if (d.includes('produto acabado') || d.includes('pa ') || d.includes('- pa') || d.includes('produto final') || d.includes('racao') || d.includes('formulacao')) return 'PRODUTO ACABADO';
+  if (d.includes('embalagem') || d.includes('sacaria') || d.includes('filme') || d.includes('rotulo') || d.includes('frasco')) return 'EMBALAGEM';
+  return null;
 }
 
 function resolverProjeto(cat, classe, subtipo) {
@@ -1645,10 +1653,10 @@ function classificarAnalise() {
 
   if (linhas.length === 1) {
     const { cat, regra } = detectarCategoria(linhas[0]);
-    // check if PRODUTO and description suggests cepa
     const dCepa = normAl(linhas[0]);
     const isCepa = cat === 'PRODUTO' && AL_KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
-    const proj = resolverProjeto(cat === 'PRODUTO' && isCepa ? 'PRODUTO' : cat, classe, isCepa ? 'cepa' : subtipo);
+    const subtipoFinal = subtipo || (classe === 'CUSTO' ? detectarSubtipoAuto(linhas[0]) : null);
+    const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
     const cor = badgeCor(cat);
     res.innerHTML = `
       <div style="background:var(--sky-light);border:1px solid var(--sky-mid);border-radius:10px;padding:16px 20px;">
@@ -1667,7 +1675,8 @@ function classificarAnalise() {
       const { cat, regra } = detectarCategoria(l);
       const dCepa = normAl(l);
       const isCepa = cat === 'PRODUTO' && AL_KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
-      const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipo);
+      const subtipoFinal = subtipo || (classe === 'CUSTO' ? detectarSubtipoAuto(l) : null);
+      const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
       const cor = badgeCor(cat);
       rows += `<tr>
         <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.79rem;">${l}</td>
