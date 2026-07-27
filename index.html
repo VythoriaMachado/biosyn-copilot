@@ -1740,6 +1740,82 @@ function resolverProjeto(cat, classe, subtipo) {
   return 'A CONFIRMAR';
 }
 
+// Pontuação de similaridade para INDEFINIDO
+function pontuarSimilaridade(desc) {
+  const d = normAl(desc);
+  const cats = [
+    { cat:'DIGESTIBILIDADE',  kw: KW_DIGESTIBILIDADE,  label:'Avaliação de digestibilidade de nutrientes',   projetos:'(conforme classe)' },
+    { cat:'FISICO-QUIMICO',   kw: KW_FISICO_QUIMICO,   label:'Composição, quantificação ou parâmetro físico-químico', projetos:'VEN: 451 | CUSTO: 887/888/889/525' },
+    { cat:'HISTOPATOLOGICO',  kw: KW_HISTOPATOLOGICO,  label:'Avaliação morfológica de tecido ou órgão',    projetos:'VEN: 452' },
+    { cat:'IMUNOLOGICO',      kw: KW_IMUNOLOGICO,      label:'Detecção de anticorpos ou resposta imune',    projetos:'VEN: 453' },
+    { cat:'MATERIAIS',        kw: KW_MATERIAIS,        label:'Compra de materiais para realização de coleta', projetos:'VEN: 454' },
+    { cat:'MICROBIOLOGICO',   kw: KW_MICROBIOLOGICO,   label:'Presença/contagem de patógenos ou microrganismos contaminantes', projetos:'VEN: 629 | CUSTO: 523/524/688' },
+    { cat:'PRODUTO',          kw: KW_PRODUTO_CEPA,     label:'Viabilidade/recuperação de cepa probiótica em produto', projetos:'VEN: 630/751' },
+  ];
+  const stopW = ['de','do','da','dos','das','em','no','na','para','por','com','sem','um','uma','o','a','os','as','e','ou','que','se','ao','as','este','essa','isso'];
+  let melhor = null, melhorScore = 0;
+  for (const c of cats) {
+    let score = 0, hits = [];
+    for (const kw of c.kw) {
+      const kn = normAl(kw);
+      const palavrasKw = kn.split(/\s+/).filter(w => w.length > 3 && !stopW.includes(w));
+      const matched = palavrasKw.length > 0
+        ? palavrasKw.some(w => d.includes(w))
+        : d.includes(kn);
+      if (matched) { score++; hits.push(kw); }
+    }
+    if (score > melhorScore) { melhorScore = score; melhor = { ...c, score, hits: hits.slice(0,3) }; }
+  }
+  return { melhor, melhorScore };
+}
+
+function sugerirNomeProjeto(desc) {
+  const stopW = ['de','do','da','dos','das','em','no','na','para','por','com','sem','um','uma','o','a','os','as','e','ou','que','se','ao','em','base','seca','umida'];
+  const palavras = normAl(desc).split(/[\s\-\/\(\)\[\]]+/).filter(w => w.length > 3 && !stopW.includes(w));
+  return palavras.slice(0,4).join(' ').toUpperCase().trim() || 'NOVA ANALISE';
+}
+
+function renderIndefinido(desc, classe) {
+  const { melhor, melhorScore } = pontuarSimilaridade(desc);
+  const nomeSugerido = sugerirNomeProjeto(desc);
+  const precisaNovo = melhorScore === 0;
+
+  const blocoSimilar = melhor ? `
+    <div style="margin-top:14px;padding:12px 14px;background:#fff;border:1px solid #ddd;border-radius:8px;">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">📌 Projeto mais semelhante encontrado</div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Categoria:</strong> <span style="background:${badgeCor(melhor.cat)};color:#fff;border-radius:4px;padding:1px 8px;font-size:0.78rem;">${melhor.cat}</span></div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>O que cobre:</strong> ${melhor.label}</div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Projetos disponíveis:</strong> ${melhor.projetos}</div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Termos que geraram similaridade:</strong> <em>${melhor.hits.join(', ') || '—'}</em></div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Diferenças:</strong> a descrição contém termos que não se encaixam completamente nesta categoria — pode ser um método novo, parâmetro não mapeado ou combinação de tipos.</div>
+      <div style="font-size:0.8rem;"><strong>Justificativa:</strong> ${melhorScore < 2 ? 'Correspondência parcial fraca — menos de 2 termos reconhecidos.' : 'Há correspondência parcial, mas a análise parece extrapolar o escopo da categoria.'}</div>
+    </div>` : `
+    <div style="margin-top:14px;padding:10px 14px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.8rem;">
+      ⚠️ Nenhuma categoria existente apresentou qualquer correspondência com a descrição informada.
+    </div>`;
+
+  const blocoNovo = precisaNovo ? `
+    <div style="margin-top:14px;padding:12px 14px;background:#e8f5e9;border:1px solid #66bb6a;border-radius:8px;">
+      <div style="font-size:0.72rem;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">💡 Sugestão: Criação de Novo Projeto</div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Nome sugerido (padrão ERP):</strong> <code style="background:#fff;padding:2px 6px;border-radius:3px;">${nomeSugerido}</code></div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Categoria provável:</strong> a definir junto à Contabilidade (nenhuma das 7 categorias existentes se aplica).</div>
+      <div style="font-size:0.8rem;margin-bottom:4px;"><strong>Por que é necessário:</strong> a análise representa um tipo de avaliação não coberto por nenhuma categoria existente — não é redução de nome, é um método/objetivo diferente.</div>
+      <div style="font-size:0.8rem;color:#555;">⚠️ Antes de criar, confirme com a área Contábil/Financeira se existe projeto análogo já cadastrado no Senior ERP.</div>
+    </div>` : `
+    <div style="margin-top:12px;padding:10px 14px;background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;font-size:0.8rem;">
+      ℹ️ Há similaridade parcial com a categoria <strong>${melhor?.cat || ''}</strong>. Verifique se a análise se enquadra antes de solicitar a criação de um novo projeto.
+    </div>`;
+
+  return `
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:16px 20px;">
+      <div style="font-size:0.72rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">⚠️ Classificação Não Localizada</div>
+      <div style="margin-bottom:6px;font-size:0.8rem;"><span style="color:#666;margin-right:6px;">Descrição:</span><strong>${desc}</strong></div>
+      <div style="font-size:0.8rem;color:#555;margin-bottom:4px;">Nenhum projeto existente atende completamente esta análise com os dados fornecidos.</div>
+      ${blocoSimilar}
+      ${blocoNovo}
+    </div>`;
+}
+
 function badgeCor(cat) {
   const m = {'DIGESTIBILIDADE':'#6a3fa0','FISICO-QUIMICO':'#0077b6','HISTOPATOLOGICO':'#e85d04','IMUNOLOGICO':'#2d6a4f','MATERIAIS':'#7b6200','MICROBIOLOGICO':'#b5179e','PRODUTO':'#023e8a','AMBIENTAL':'#457b9d','INDEFINIDO':'#888'};
   return m[cat] || '#002468';
@@ -1757,8 +1833,9 @@ function classificarAnalise() {
 
   if (linhas.length === 1) {
     const { cat, regra } = detectarCategoria(linhas[0]);
+    if (cat === 'INDEFINIDO') { res.innerHTML = renderIndefinido(linhas[0], classe); return; }
     const dCepa = normAl(linhas[0]);
-    const isCepa = cat === 'PRODUTO' && AL_KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
+    const isCepa = cat === 'PRODUTO' && KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
     const subtipoFinal = subtipo || (classe === 'CUSTO' ? detectarSubtipoAuto(linhas[0]) : null);
     const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
     const cor = badgeCor(cat);
@@ -1768,7 +1845,7 @@ function classificarAnalise() {
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Descrição:</span><strong>${linhas[0]}</strong></div>
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Classe:</span><span style="background:var(--navy);color:#fff;border-radius:4px;padding:2px 8px;font-size:0.78rem;">${classe}</span></div>
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Categoria:</span><span style="background:${cor};color:#fff;border-radius:4px;padding:2px 10px;font-size:0.82rem;font-weight:700;">${cat}</span></div>
-        ${subtipo && classe==='CUSTO'?`<div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Subtipo:</span><strong>${subtipo}</strong></div>`:''}
+        ${subtipoFinal && classe==='CUSTO'?`<div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Subtipo:</span><strong>${subtipoFinal}</strong></div>`:''}
         <div style="margin-bottom:6px;"><span style="font-size:0.73rem;color:#666;margin-right:6px;">Projeto (reduzido):</span><span style="background:var(--sky);color:#fff;border-radius:4px;padding:2px 10px;font-size:0.82rem;font-weight:700;">${proj}</span></div>
         <div style="margin-top:10px;font-size:0.76rem;color:#555;">💡 <em>${regra}</em></div>
       </div>`;
@@ -1778,14 +1855,18 @@ function classificarAnalise() {
     linhas.forEach(l => {
       const { cat, regra } = detectarCategoria(l);
       const dCepa = normAl(l);
-      const isCepa = cat === 'PRODUTO' && AL_KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
+      const isCepa = cat === 'PRODUTO' && KW_PRODUTO_CEPA.some(kw => dCepa.includes(normAl(kw)));
       const subtipoFinal = subtipo || (classe === 'CUSTO' ? detectarSubtipoAuto(l) : null);
-      const proj = resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
+      const proj = cat === 'INDEFINIDO' ? '—' : resolverProjeto(cat, classe, isCepa ? 'cepa' : subtipoFinal);
       const cor = badgeCor(cat);
+      const { melhor } = cat === 'INDEFINIDO' ? pontuarSimilaridade(l) : { melhor: null };
+      const projetoCell = cat === 'INDEFINIDO'
+        ? `<span style="color:#dc2626;font-size:0.75rem;">⚠️ Não classificado${melhor ? ` — mais próximo: ${melhor.cat}` : ''}</span>`
+        : `<span style="white-space:nowrap;">${proj}</span>`;
       rows += `<tr>
         <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.79rem;">${l}</td>
         <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);"><span style="background:${cor};color:#fff;border-radius:4px;padding:1px 7px;font-size:0.75rem;font-weight:700;white-space:nowrap;">${cat}</span></td>
-        <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.79rem;white-space:nowrap;">${proj}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.79rem;">${projetoCell}</td>
         <td style="padding:5px 8px;border-bottom:1px solid var(--gray-light);font-size:0.72rem;color:#666;">${regra}</td>
       </tr>`;
     });
